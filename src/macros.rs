@@ -24,12 +24,12 @@ macro_rules! new_state {
             }
         }
     };
-    ($nam:ident { $($field_name:ident: $field_type:ty: $field_default:expr),* }) => {
-        struct $nam<T> {
-            _phantom       : ::std::marker::PhantomData<T>,
+    ($nam:ident, $typ:ty, { $($field_name:ident: $field_type:ty: $field_default:expr),* }) => {
+        struct $nam {
+            _phantom       : ::std::marker::PhantomData<$typ>,
             $( $field_name : $field_type ),*
         }
-        impl<T> Initializer for $nam<T> {
+        impl Initializer for $nam {
             fn new() -> Self {
                 $nam {
                     _phantom       : ::std::marker::PhantomData,

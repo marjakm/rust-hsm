@@ -1,9 +1,11 @@
 #[macro_use]
+extern crate log;
+
+#[macro_use]
 mod macros;
 
 #[cfg(test)]
 mod tests;
-
 
 #[derive(Debug)]
 enum Event<UsrEvt> {
@@ -45,12 +47,17 @@ struct StateMachine<UsrEvt, UsrStEnum, UsrSt> {
     _phantom : ::std::marker::PhantomData<UsrEvt>
 }
 impl<UsrEvt, UsrStEnum, UsrSt> StateMachine<UsrEvt, UsrStEnum, UsrSt>
-    where UsrSt: Initializer + StateLookup<UsrStEnum, UsrEvt> {
+    where UsrSt: Initializer + StateLookup<UsrStEnum, UsrEvt>,
+          UsrEvt: ::std::fmt::Debug {
     fn new(initial: UsrStEnum) -> Self {
         StateMachine {
             current  : initial,
             states   : UsrSt::new(),
             _phantom : ::std::marker::PhantomData
         }
+    }
+
+    fn input(&mut self, evt: Event<UsrEvt>) {
+        info!("input: {:?}", evt);
     }
 }

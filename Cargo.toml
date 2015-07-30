@@ -1,4 +1,9 @@
 [package]
-name = "hsm"
+name    = "hsm"
 version = "0.1.0"
 authors = ["Mattis Marjak <mattis.marjak@gmail.com>"]
+
+[dependencies]
+log     = "*"
+fern    = "*"
+time    = "*"
