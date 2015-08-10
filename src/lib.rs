@@ -77,11 +77,14 @@ impl<UsrStStr, UsrStEnum, UsrEvt> StateMachine<UsrStStr, UsrStEnum, UsrEvt>
     }
 
     pub fn input(&mut self, evt: Event<UsrEvt>) {
-        info!("input:  {:?}", evt);
-        info!("state:  {:?}", self.current);
+        debug!("state:  {:?}", self.current);
+        debug!("input:  {:?}", evt);
         let cur_st = self.states.lookup(&self.current);
         let action = cur_st.handle_event(evt);
-        info!("action: {:?}", action)
-
+        debug!("action: {:?}", action);
+        match action {
+            Action::Ignore          => {},
+            Action::Transition(x)   => {self.current = x;}
+        }
     }
 }
