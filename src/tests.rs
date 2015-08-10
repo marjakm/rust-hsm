@@ -1,4 +1,4 @@
-use super::{Event, State, Action, Initializer, StateMachine, StateLookup};
+use super::{Event, State, Action, Initializer, StateMachine, StateLookup, Name};
 
 extern crate fern;
 extern crate time;
@@ -23,7 +23,7 @@ fn conf_logger() {
 
 macro_rules! impl_state {
     ($nam:ident, $evts:ty) => {
-        impl<'a> State<'a, $evts> for $nam {
+        impl<'a> State<'a, $evts> for $nam<$evts> {
             fn handle_event(&'a mut self, evt: Event<$evts>) -> Action<'a, $evts> {
                 Action::Ignore
             }
@@ -126,11 +126,13 @@ fn state_machine() {
         HeadAega,
         Number(T)
     }
-    new_state!{Hei, MyEvent<u8>};
+    new_state!{Hei};
     impl_state!(Hei, MyEvent<u8>);
-    new_state!{Hoo, MyEvent<u8>};
+    new_state!{Hoo};
     impl_state!(Hoo, MyEvent<u8>);
     create_state_enum_and_struct!{StateEnum, StateStruct, MyEvent<u8>, (Hei, Hoo)};
     let mut sm = StateMachine::<MyEvent<u8>, StateEnum, StateStruct>::new(StateEnum::Hei);
     sm.input(Event::Enter);
+    let testevent = Hei::<MyEvent<u8>>::new();
+    info!("{:?}", &testevent as &State<MyEvent<u8>>);
 }

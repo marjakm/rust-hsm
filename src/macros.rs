@@ -14,27 +14,37 @@ macro_rules! impl_display {
 }
 
 macro_rules! new_state {
-    ($nam:ident, $typ:ty) => {
-        struct $nam {
-            _phantom: ::std::marker::PhantomData<$typ>
+    ($nam:ident) => {
+        struct $nam<T> {
+            _phantom: ::std::marker::PhantomData<T>
         }
-        impl Initializer for $nam {
+        impl<T> Initializer for $nam<T> {
             fn new() -> Self {
                 $nam {_phantom : ::std::marker::PhantomData}
             }
         }
+        impl<T> Name for $nam<T> {
+            fn name(&self) -> &'static str {
+                stringify!($nam)
+            }
+        }
     };
-    ($nam:ident, $typ:ty, { $($field_name:ident: $field_type:ty: $field_default:expr),* }) => {
-        struct $nam {
-            _phantom       : ::std::marker::PhantomData<$typ>,
+    ($nam:ident, { $($field_name:ident: $field_type:ty: $field_default:expr),* }) => {
+        struct $nam<T> {
+            _phantom       : ::std::marker::PhantomData<T>,
             $( $field_name : $field_type ),*
         }
-        impl Initializer for $nam {
+        impl<T> Initializer for $nam<T> {
             fn new() -> Self {
                 $nam {
                     _phantom       : ::std::marker::PhantomData,
                     $( $field_name : $field_default ),*
                 }
+            }
+        }
+        impl<T> Name for $nam<T> {
+            fn name(&self) -> &'static str {
+                stringify!($nam)
             }
         }
     }
@@ -48,7 +58,7 @@ macro_rules! create_state_enum_and_struct {
             }
         )
         struct $st_str {
-            $( $s : $s ),*
+            $( $s : $s<$st_evt> ),*
         }
         impl Initializer for $st_str {
             fn new() -> Self {
