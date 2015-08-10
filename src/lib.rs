@@ -19,15 +19,15 @@ pub trait Initializer {
 
 
 #[derive(Debug)]
-pub enum Action<'a, UsrEvt: fmt::Debug> {
+pub enum Action<UsrStEnum: fmt::Debug> {
     Ignore,
-    Transition(&'a State<'a, UsrEvt>)
+    Transition(UsrStEnum)
 }
-impl<'a, UsrEvt: fmt::Debug> fmt::Display for Action<'a, UsrEvt> {
+impl<UsrStEnum: fmt::Debug> fmt::Display for Action<UsrStEnum> {
     fn fmt(&self, f:&mut fmt::Formatter) -> Result<(), fmt::Error> {
-        match *self {
-            Action::Ignore        => try!(fmt::Display::fmt("Ignore", f)),
-            Action::Transition(x) => try!(fmt::Display::fmt(&format!("Transition({:?})", x), f)),
+        match self {
+            &Action::Ignore            => try!(fmt::Display::fmt("Ignore", f)),
+            &Action::Transition(ref x) => try!(fmt::Display::fmt(&format!("Transition({:?})", x), f)),
         };
         Ok(())
     }
@@ -42,10 +42,10 @@ pub enum Event<UsrEvt> {
 }
 
 
-pub trait State<'a, UsrEvt> where Self: Name {
-    fn handle_event(&'a mut self, evt: Event<UsrEvt>) -> Action<'a, UsrEvt>;
+pub trait State<UsrEvt, UsrStEnum> where Self: Name {
+    fn handle_event(&mut self, evt: Event<UsrEvt>) -> Action<UsrStEnum>;
 }
-impl<'a, UsrEvt> fmt::Debug for &'a State<'a, UsrEvt> {
+impl<'a, UsrEvt, UsrStEnum> fmt::Debug for &'a State<UsrEvt, UsrStEnum> {
     fn fmt(&self, f:&mut fmt::Formatter) -> Result<(), fmt::Error> {
         try!(fmt::Debug::fmt(self.name(), f));
         Ok(())
@@ -54,7 +54,7 @@ impl<'a, UsrEvt> fmt::Debug for &'a State<'a, UsrEvt> {
 
 
 pub trait StateLookup<UsrStEnum, UsrEvt> {
-    fn lookup(&mut self, typ: &UsrStEnum) -> &mut State<UsrEvt>;
+    fn lookup(&mut self, typ: &UsrStEnum) -> &mut State<UsrEvt, UsrStEnum>;
 }
 
 

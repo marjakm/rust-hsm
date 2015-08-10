@@ -18,15 +18,19 @@ macro_rules! _hsm_create_states {
 macro_rules! _hsm_create_state {
     ($nam:ident) => {
         #[derive(Debug)]
-        struct $nam<T> {
-            _phantom: ::std::marker::PhantomData<T>
+        struct $nam<T, E> {
+            _phantom_events: ::std::marker::PhantomData<T>,
+            _phantom_states: ::std::marker::PhantomData<E>
         }
-        impl<T> $crate::Initializer for $nam<T> {
+        impl<T, E> $crate::Initializer for $nam<T, E> {
             fn new() -> Self {
-                $nam {_phantom : ::std::marker::PhantomData}
+                $nam {
+                    _phantom_events: ::std::marker::PhantomData,
+                    _phantom_states: ::std::marker::PhantomData
+                }
             }
         }
-        impl<T> $crate::Name for $nam<T> {
+        impl<T, E> $crate::Name for $nam<T, E> {
             fn name(&self) -> &'static str {
                 stringify!($nam)
             }
@@ -34,19 +38,21 @@ macro_rules! _hsm_create_state {
     };
     ($nam:ident, { $($field_name:ident: $field_type:ty: $field_default:expr),* }) => {
         #[derive(Debug)]
-        struct $nam<T> {
-            _phantom       : ::std::marker::PhantomData<T>,
+        struct $nam<T, E> {
+            _phantom_events: ::std::marker::PhantomData<T>,
+            _phantom_states: ::std::marker::PhantomData<E>
             $( $field_name : $field_type ),*
         }
-        impl<T> $crate::Initializer for $nam<T> {
+        impl<T, E> $crate::Initializer for $nam<T, E> {
             fn new() -> Self {
                 $nam {
-                    _phantom       : ::std::marker::PhantomData,
+                    _phantom_events: ::std::marker::PhantomData,
+                    _phantom_states: ::std::marker::PhantomData
                     $( $field_name : $field_default ),*
                 }
             }
         }
-        impl<T> $crate::Name for $nam<T> {
+        impl<T, E> $crate::Name for $nam<T, E> {
             fn name(&self) -> &'static str {
                 stringify!($nam)
             }
@@ -64,7 +70,7 @@ macro_rules! _hsm_create_state_enum {
         impl ::std::fmt::Display for $st_en {
             fn fmt(&self, f:&mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
                 match *self {
-                    $( $st_en::$s => ::std::fmt::Display::fmt(stringify!($s), f) ),*
+                    $( $st_en::$s => try!(::std::fmt::Display::fmt(stringify!($s), f)) ),*
                 };
                 Ok(())
             }
@@ -78,7 +84,7 @@ macro_rules! _hsm_create_state_struct {
         #[derive(Debug)]
         #[allow(non_snake_case)]
         struct $st_str {
-            $( $s : $s<$st_evt> ),*
+            $( $s : $s<$st_evt, $st_en> ),*
         }
         impl $crate::Initializer for $st_str {
             fn new() -> Self {
@@ -88,7 +94,7 @@ macro_rules! _hsm_create_state_struct {
             }
         }
         impl $crate::StateLookup<$st_en, $st_evt> for $st_str {
-            fn lookup(&mut self, typ: &$st_en) -> &mut $crate::State<$st_evt> {
+            fn lookup(&mut self, typ: &$st_en) -> &mut $crate::State<$st_evt, $st_en> {
                 match *typ {
                     $($st_en::$s => &mut self.$s ),*
                 }

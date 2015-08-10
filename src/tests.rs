@@ -1,4 +1,4 @@
-use super::{Event, State, Action, Initializer, StateMachine, StateLookup, Name};
+use super::{Event, State, Action, StateMachine, Initializer};
 
 extern crate fern;
 extern crate time;
