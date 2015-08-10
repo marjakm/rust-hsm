@@ -9,17 +9,17 @@ mod tests;
 use std::fmt;
 
 
-trait Name {
+pub trait Name {
     fn name(&self) -> &'static str;
 }
 
-trait Initializer {
+pub trait Initializer {
     fn new() -> Self;
 }
 
 
 #[derive(Debug)]
-enum Action<'a, UsrEvt: fmt::Debug> {
+pub enum Action<'a, UsrEvt: fmt::Debug> {
     Ignore,
     Transition(&'a State<'a, UsrEvt>)
 }
@@ -35,14 +35,14 @@ impl<'a, UsrEvt: fmt::Debug> fmt::Display for Action<'a, UsrEvt> {
 
 
 #[derive(Debug)]
-enum Event<UsrEvt> {
+pub enum Event<UsrEvt> {
     Enter,
     User(UsrEvt),
     Exit
 }
 
 
-trait State<'a, UsrEvt> where Self: Name {
+pub trait State<'a, UsrEvt> where Self: Name {
     fn handle_event(&'a mut self, evt: Event<UsrEvt>) -> Action<'a, UsrEvt>;
 }
 impl<'a, UsrEvt> fmt::Debug for &'a State<'a, UsrEvt> {
@@ -53,12 +53,12 @@ impl<'a, UsrEvt> fmt::Debug for &'a State<'a, UsrEvt> {
 }
 
 
-trait StateLookup<UsrStEnum, UsrEvt> {
+pub trait StateLookup<UsrStEnum, UsrEvt> {
     fn lookup(&mut self, typ: &UsrStEnum) -> &mut State<UsrEvt>;
 }
 
 
-struct StateMachine<UsrStStr, UsrStEnum, UsrEvt> {
+pub struct StateMachine<UsrStStr, UsrStEnum, UsrEvt> {
     current  : UsrStEnum,
     states   : UsrStStr,
     _phantom : ::std::marker::PhantomData<UsrEvt>
@@ -68,7 +68,7 @@ impl<UsrStStr, UsrStEnum, UsrEvt> StateMachine<UsrStStr, UsrStEnum, UsrEvt>
           UsrStEnum : fmt::Debug,
           UsrEvt    : fmt::Debug {
 
-    fn new(initial: UsrStEnum) -> Self {
+    pub fn new(initial: UsrStEnum) -> Self {
         StateMachine {
             current  : initial,
             states   : UsrStStr::new(),
@@ -76,7 +76,7 @@ impl<UsrStStr, UsrStEnum, UsrEvt> StateMachine<UsrStStr, UsrStEnum, UsrEvt>
         }
     }
 
-    fn input(&mut self, evt: Event<UsrEvt>) {
+    pub fn input(&mut self, evt: Event<UsrEvt>) {
         info!("input:  {:?}", evt);
         info!("state:  {:?}", self.current);
         let cur_st = self.states.lookup(&self.current);
