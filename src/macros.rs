@@ -1,20 +1,20 @@
-macro_rules! impl_display {
-    (enum $nam:ident { $( $s:ident ),* }) => {
-        #[derive(Debug)]
-        enum $nam { $( $s ),* }
-        impl ::std::fmt::Display for $nam {
-            fn fmt(&self, f:&mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
-                match *self {
-                    $( $nam::$s => ::std::fmt::Display::fmt(stringify!($s), f) ),*
-                };
-                Ok(())
-            }
-        }
+macro_rules! hsm_define_objects {
+    ($st_str:ident, $st_en:ident, $st_evt:ty, ( $($s:ident),* ) ) => {
+        _hsm_create_states!($($s),*);
+        _hsm_create_state_enum!($st_en, ($($s),*));
+        _hsm_create_state_struct!($st_str, $st_en, $st_evt, ($($s),*) );
     }
 }
 
-macro_rules! new_state {
+macro_rules! _hsm_create_states {
+    ( $($s:ident),* ) => {
+        $(_hsm_create_state!($s))*
+    }
+}
+
+macro_rules! _hsm_create_state {
     ($nam:ident) => {
+        #[derive(Debug)]
         struct $nam<T> {
             _phantom: ::std::marker::PhantomData<T>
         }
@@ -30,6 +30,7 @@ macro_rules! new_state {
         }
     };
     ($nam:ident, { $($field_name:ident: $field_type:ty: $field_default:expr),* }) => {
+        #[derive(Debug)]
         struct $nam<T> {
             _phantom       : ::std::marker::PhantomData<T>,
             $( $field_name : $field_type ),*
@@ -50,13 +51,26 @@ macro_rules! new_state {
     }
 }
 
-macro_rules! create_state_enum_and_struct {
-    ($st_en:ident, $st_str:ident, $st_evt:ty, ( $($s:ident),* ) ) => {
-        impl_display!(
-            enum $st_en {
-                $( $s ),*
+macro_rules! _hsm_create_state_enum {
+    ($st_en:ident, ($($s:ident),*) ) => {
+        #[derive(Debug)]
+        enum $st_en {
+            $( $s ),*
+        }
+        impl ::std::fmt::Display for $st_en {
+            fn fmt(&self, f:&mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+                match *self {
+                    $( $st_en::$s => ::std::fmt::Display::fmt(stringify!($s), f) ),*
+                };
+                Ok(())
             }
-        )
+        }
+    }
+}
+
+macro_rules! _hsm_create_state_struct {
+    ($st_str:ident, $st_en:ident, $st_evt:ty, ($($s:ident),*) ) => {
+        #[derive(Debug)]
         struct $st_str {
             $( $s : $s<$st_evt> ),*
         }

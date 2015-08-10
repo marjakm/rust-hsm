@@ -58,19 +58,19 @@ impl<'a, UsrEvt> fmt::Debug for &'a State<'a, UsrEvt> {
     }
 }
 
-trait StateLookup<StEnum, UsrEvt> {
-    fn lookup(&mut self, typ: &StEnum) -> &mut State<UsrEvt>;
+trait StateLookup<UsrStEnum, UsrEvt> {
+    fn lookup(&mut self, typ: &UsrStEnum) -> &mut State<UsrEvt>;
 }
 
-struct StateMachine<UsrEvt, UsrStEnum, UsrStStr> {
+struct StateMachine<UsrStStr, UsrStEnum, UsrEvt> {
     current  : UsrStEnum,
     states   : UsrStStr,
     _phantom : ::std::marker::PhantomData<UsrEvt>
 }
-impl<UsrEvt, UsrStEnum, UsrStStr> StateMachine<UsrEvt, UsrStEnum, UsrStStr>
-    where UsrEvt    : fmt::Debug,
+impl<UsrStStr, UsrStEnum, UsrEvt> StateMachine<UsrStStr, UsrStEnum, UsrEvt>
+    where UsrStStr  : Initializer + StateLookup<UsrStEnum, UsrEvt>,
           UsrStEnum : fmt::Debug,
-          UsrStStr  : Initializer + StateLookup<UsrStEnum, UsrEvt> {
+          UsrEvt    : fmt::Debug {
 
     fn new(initial: UsrStEnum) -> Self {
         StateMachine {

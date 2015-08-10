@@ -126,12 +126,10 @@ fn state_machine() {
         HeadAega,
         Number(T)
     }
-    new_state!{Hei};
+    hsm_define_objects!(StateStruct, StateEnum, MyEvent<u8>, (Hei, Hoo));
     impl_state!(Hei, MyEvent<u8>);
-    new_state!{Hoo};
     impl_state!(Hoo, MyEvent<u8>);
-    create_state_enum_and_struct!{StateEnum, StateStruct, MyEvent<u8>, (Hei, Hoo)};
-    let mut sm = StateMachine::<MyEvent<u8>, StateEnum, StateStruct>::new(StateEnum::Hei);
+    let mut sm = StateMachine::<StateStruct, StateEnum, MyEvent<u8>>::new(StateEnum::Hei);
     sm.input(Event::Enter);
     let testevent = Hei::<MyEvent<u8>>::new();
     info!("{:?}", &testevent as &State<MyEvent<u8>>);
