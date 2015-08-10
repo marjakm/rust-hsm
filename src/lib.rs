@@ -2,35 +2,36 @@
 
 #[macro_use]
 extern crate log;
-
 #[macro_use]
 mod macros;
-
 #[cfg(test)]
 mod tests;
-
 use std::fmt;
 
 
-macro_rules! impl_fmt_trait_for_action {
-    ( $tr:ty, $frmtr:path ) => {
-        impl<'a, UsrEvt: fmt::Debug> $tr for Action<'a, UsrEvt> {
-            fn fmt(&self, f:&mut fmt::Formatter) -> Result<(), fmt::Error> {
-                match *self {
-                    Action::Ignore        => try!($frmtr("Ignore", f)),
-                    Action::Transition(x) => try!($frmtr(&format!("Transition({:?})", x), f)),
-                };
-                Ok(())
-            }
-        }
-    }
+trait Name {
+    fn name(&self) -> &'static str;
 }
+
+trait Initializer {
+    fn new() -> Self;
+}
+
+
+#[derive(Debug)]
 enum Action<'a, UsrEvt: fmt::Debug> {
     Ignore,
     Transition(&'a State<'a, UsrEvt>)
 }
-impl_fmt_trait_for_action!(fmt::Display, fmt::Display::fmt);
-impl_fmt_trait_for_action!(fmt::Debug,   fmt::Debug::fmt);
+impl<'a, UsrEvt: fmt::Debug> fmt::Display for Action<'a, UsrEvt> {
+    fn fmt(&self, f:&mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match *self {
+            Action::Ignore        => try!(fmt::Display::fmt("Ignore", f)),
+            Action::Transition(x) => try!(fmt::Display::fmt(&format!("Transition({:?})", x), f)),
+        };
+        Ok(())
+    }
+}
 
 
 #[derive(Debug)]
@@ -40,13 +41,6 @@ enum Event<UsrEvt> {
     Exit
 }
 
-trait Name {
-    fn name(&self) -> &'static str;
-}
-
-trait Initializer {
-    fn new() -> Self;
-}
 
 trait State<'a, UsrEvt> where Self: Name {
     fn handle_event(&'a mut self, evt: Event<UsrEvt>) -> Action<'a, UsrEvt>;
@@ -58,9 +52,11 @@ impl<'a, UsrEvt> fmt::Debug for &'a State<'a, UsrEvt> {
     }
 }
 
+
 trait StateLookup<UsrStEnum, UsrEvt> {
     fn lookup(&mut self, typ: &UsrStEnum) -> &mut State<UsrEvt>;
 }
+
 
 struct StateMachine<UsrStStr, UsrStEnum, UsrEvt> {
     current  : UsrStEnum,
