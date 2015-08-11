@@ -8,8 +8,8 @@ macro_rules! hsm_define_objects {
 }
 
 #[macro_export]
-macro_rules! hsm_action_closure {
-    ($x:block) => { $crate::Action::Closure(Box::new( move || $x)) }
+macro_rules! hsm_closure_transition {
+    ($x:block) => { $crate::Action::ClosureTransition(Box::new( move || $x)) }
 }
 
 #[macro_export]
@@ -33,55 +33,66 @@ macro_rules! _hsm_create_states {
 }
 
 #[macro_export]
-macro_rules! _hsm_create_state {
+macro_rules! _hsm_create_state_common {
     ($nam:ident) => {
-        #[derive(Debug)]
-        struct $nam<T, E> {
-            _phantom_events: ::std::marker::PhantomData<T>,
-            _phantom_states: ::std::marker::PhantomData<E>
-        }
-        impl<T, E> $crate::Initializer for $nam<T, E> {
-            fn new() -> Self {
-                $nam {
-                    _phantom_events: ::std::marker::PhantomData,
-                    _phantom_states: ::std::marker::PhantomData
-                }
-            }
-        }
         impl<T, E> $crate::Name for $nam<T, E> {
             fn name(&self) -> &'static str {
                 stringify!($nam)
             }
         }
-    };
-    ($nam:ident, { $($field_name:ident: $field_type:ty: $field_default:expr),* }) => {
-        #[derive(Debug)]
-        struct $nam<T, E> {
-            _phantom_events: ::std::marker::PhantomData<T>,
-            _phantom_states: ::std::marker::PhantomData<E>
-            $( $field_name : $field_type ),*
-        }
-        impl<T, E> $crate::Initializer for $nam<T, E> {
-            fn new() -> Self {
-                $nam {
-                    _phantom_events: ::std::marker::PhantomData,
-                    _phantom_states: ::std::marker::PhantomData
-                    $( $field_name : $field_default ),*
-                }
+        impl<T, E: Clone> $crate::Parent<E> for $nam<T, E> {
+            fn get_parent(&self) -> Option<E> {
+                self.parent.clone()
             }
-        }
-        impl<T, E> $crate::Name for $nam<T, E> {
-            fn name(&self) -> &'static str {
-                stringify!($nam)
+            fn set_parent(&mut self, newparent: E) {
+                self.parent = Some(newparent);
             }
         }
     }
 }
 
 #[macro_export]
+macro_rules! _hsm_create_state {
+    ($nam:ident) => {
+        #[derive(Debug)]
+        struct $nam<T, E> {
+            _phantom_events: ::std::marker::PhantomData<T>,
+            parent         : Option<E>
+        }
+        impl<T, E> $crate::Initializer for $nam<T, E> {
+            fn new() -> Self {
+                $nam {
+                    _phantom_events: ::std::marker::PhantomData,
+                    parent         : None
+                }
+            }
+        }
+        _hsm_create_state_common!($nam);
+    };
+    ($nam:ident, { $($field_name:ident: $field_type:ty: $field_default:expr),* }) => {
+        #[derive(Debug)]
+        struct $nam<T, E> {
+            _phantom_events: ::std::marker::PhantomData<T>,
+            parent         : Option<E>
+            $( $field_name : $field_type ),*
+        }
+        impl<T, E> $crate::Initializer for $nam<T, E> {
+            fn new() -> Self {
+                $nam {
+                    _phantom_events: ::std::marker::PhantomData,
+                    parent         : None,
+                    $( $field_name : $field_default ),*
+                }
+            }
+        }
+        _hsm_create_state_common!($nam);
+    }
+}
+
+#[macro_export]
 macro_rules! _hsm_create_state_enum {
     ($st_en:ident, ($($s:ident),*) ) => {
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Eq, PartialEq)]
         enum $st_en {
             $( $s ),*
         }
