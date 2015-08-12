@@ -77,6 +77,7 @@ impl<UsrStEnum, UsrEvtEnum: Clone> Task<UsrStEnum, UsrEvtEnum> {
 
 pub struct StateMachine<UsrStStr, UsrStEnum, UsrEvtEnum: Clone> {
     current     : UsrStEnum,
+    started     : bool,
     states      : UsrStStr,
     exit_tasks  : Vec<Task<UsrStEnum, UsrEvtEnum>>,
     enter_tasks : Vec<Task<UsrStEnum, UsrEvtEnum>>,
@@ -90,11 +91,22 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum> StateMachine<UsrStStr, UsrStEnum, UsrEvtEn
     pub fn new(initial: UsrStEnum) -> Self {
         StateMachine {
             current     : initial,
+            started     : false,
             states      : UsrStStr::new(),
             exit_tasks  : Vec::new(),
             enter_tasks : Vec::new(),
             _phantom    : ::std::marker::PhantomData
         }
+    }
+
+    pub fn start(&mut self) {
+        let mut parent = Some(self.current.clone());
+        while let Some(state) = parent {
+            parent = self.states.lookup(&state).get_parent();
+            self.enter_tasks.push(Task::new(state, Event::Enter));
+        }
+        self.process_enter_tasks();
+        self.started = true;
     }
 
     fn process_exit_tasks(&mut self) {
@@ -143,6 +155,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum> StateMachine<UsrStStr, UsrStEnum, UsrEvtEn
     }
 
     pub fn input(&mut self, evt: Event<UsrEvtEnum>) {
+        assert!(self.started, "Can't call input before starting the state machine with start()");
         debug!("state:  {:?}", self.current);
         debug!("input:  {:?}", evt);
         let mut action;
