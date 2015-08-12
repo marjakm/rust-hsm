@@ -37,11 +37,11 @@ pub trait Parent<UsrStEnum> {
     fn set_parent(&mut self, newparent: UsrStEnum);
 }
 
-pub trait State<UsrEvtEnum, UsrStEnum>
+pub trait State<UsrEvtEnum, UsrStEnum, UsrShrData>
     where Self: Name+Parent<UsrStEnum> {
-    fn handle_event(&mut self, evt: Event<UsrEvtEnum>, probe: bool) -> Action<UsrStEnum>;
+    fn handle_event(&mut self, shr_data: &mut UsrShrData, evt: Event<UsrEvtEnum>, probe: bool) -> Action<UsrStEnum>;
 }
-impl<'a, UsrEvtEnum, UsrStEnum> fmt::Debug for &'a State<UsrEvtEnum, UsrStEnum> {
+impl<'a, UsrEvtEnum, UsrStEnum, UsrShrData> fmt::Debug for &'a State<UsrEvtEnum, UsrStEnum, UsrShrData> {
     fn fmt(&self, f:&mut fmt::Formatter) -> Result<(), fmt::Error> {
         try!(fmt::Debug::fmt(self.name(), f));
         Ok(())
@@ -49,13 +49,13 @@ impl<'a, UsrEvtEnum, UsrStEnum> fmt::Debug for &'a State<UsrEvtEnum, UsrStEnum> 
 }
 
 
-pub trait StateLookup<UsrStEnum, UsrEvtEnum> {
-    fn lookup(&mut self, typ: &UsrStEnum) -> &mut State<UsrEvtEnum, UsrStEnum>;
+pub trait StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData> {
+    fn lookup(&mut self, typ: &UsrStEnum) -> &mut State<UsrEvtEnum, UsrStEnum, UsrShrData>;
 }
 
 #[derive(Clone)]
 struct Task<UsrStEnum, UsrEvtEnum: Clone> {
-    state:  UsrStEnum,
+    state: UsrStEnum,
     event: Event<UsrEvtEnum>
 }
 impl<UsrStEnum, UsrEvtEnum: Clone> Task<UsrStEnum, UsrEvtEnum> {
@@ -64,24 +64,26 @@ impl<UsrStEnum, UsrEvtEnum: Clone> Task<UsrStEnum, UsrEvtEnum> {
     }
 }
 
-pub struct StateMachine<UsrStStr, UsrStEnum, UsrEvtEnum: Clone> {
+pub struct StateMachine<UsrStStr, UsrStEnum, UsrEvtEnum: Clone, UsrShrData> {
     current     : UsrStEnum,
     started     : bool,
     states      : UsrStStr,
+    shr_data    : UsrShrData,
     exit_tasks  : Vec<Task<UsrStEnum, UsrEvtEnum>>,
     enter_tasks : Vec<Task<UsrStEnum, UsrEvtEnum>>,
     _phantom    : ::std::marker::PhantomData<UsrEvtEnum>
 }
-impl<UsrStStr, UsrStEnum, UsrEvtEnum> StateMachine<UsrStStr, UsrStEnum, UsrEvtEnum>
-    where UsrStStr   : Initializer + StateLookup<UsrStEnum, UsrEvtEnum>,
+impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData>
+    where UsrStStr   : Initializer + StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData>,
           UsrStEnum  : fmt::Debug+Eq+Clone,
           UsrEvtEnum : fmt::Debug+Clone {
 
-    pub fn new(initial: UsrStEnum) -> Self {
+    pub fn new(initial: UsrStEnum, shared_data: UsrShrData) -> Self {
         StateMachine {
             current     : initial,
             started     : false,
             states      : UsrStStr::new(),
+            shr_data    : shared_data,
             exit_tasks  : Vec::new(),
             enter_tasks : Vec::new(),
             _phantom    : ::std::marker::PhantomData
@@ -101,7 +103,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum> StateMachine<UsrStStr, UsrStEnum, UsrEvtEn
     fn process_exit_tasks(&mut self) {
         for task in self.exit_tasks.iter() {
             debug!("send {:?} to {:?}", task.event, task.state);
-            self.states.lookup(&task.state).handle_event(task.event.clone(), false);
+            self.states.lookup(&task.state).handle_event(&mut self.shr_data, task.event.clone(), false);
         }
         self.exit_tasks.clear();
     }
@@ -110,7 +112,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum> StateMachine<UsrStStr, UsrStEnum, UsrEvtEn
         self.enter_tasks.reverse();
         for task in self.enter_tasks.iter() {
             debug!("send {:?} to {:?}", task.event, task.state);
-            self.states.lookup(&task.state).handle_event(task.event.clone(), false);
+            self.states.lookup(&task.state).handle_event(&mut self.shr_data, task.event.clone(), false);
         }
         self.enter_tasks.clear();
     }
@@ -150,7 +152,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum> StateMachine<UsrStStr, UsrStEnum, UsrEvtEn
         let mut action;
         let mut state = self.current.clone();
         loop {
-            action = self.states.lookup(&state).handle_event(evt.clone(), true);
+            action = self.states.lookup(&state).handle_event(&mut self.shr_data, evt.clone(), true);
             match action {
                 Action::Ignore               => {
                     self.exit_tasks.clear();
@@ -175,7 +177,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum> StateMachine<UsrStStr, UsrStEnum, UsrEvtEn
                 Action::DelayedTransition => {
                     self.process_exit_tasks(); // exit until in the parent that handles the signal
                     debug!("send {:?} to {:?}", evt, state);
-                    if let Action::Transition(x) = self.states.lookup(&state).handle_event(evt.clone(), false) { // handle the signal
+                    if let Action::Transition(x) = self.states.lookup(&state).handle_event(&mut self.shr_data, evt.clone(), false) { // handle the signal
                         self.current = x.clone();
                         self.transition(state.clone(), x);
                     } else {

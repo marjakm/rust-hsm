@@ -1,14 +1,14 @@
 #[macro_export]
 macro_rules! hsm_define_objects {
-    ($st_str:ident, $st_en:ident, $st_evt:ty, ( $($s:ident),* ) ) => {
+    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ident, ( $($s:ident),* ) ) => {
         _hsm_create_states!($($s),*);
         _hsm_create_state_enum!($st_en, ($($s),*));
-        _hsm_create_state_struct!($st_str, $st_en, $st_evt, ($($s),*) );
+        _hsm_create_state_struct!($st_str, $st_en, $st_evt, $shr_dat, ($($s),*) );
     };
-    ($st_str:ident, $st_en:ident, $st_evt:ty, ( $($s:ident $x:tt),*)) => {
+    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ident, ( $($s:ident $x:tt),*)) => {
         _hsm_create_states!( $($s $x),* );
         _hsm_create_state_enum!($st_en, ($($s),*));
-        _hsm_create_state_struct!($st_str, $st_en, $st_evt, ($($s),*) );
+        _hsm_create_state_struct!($st_str, $st_en, $st_evt, $shr_dat, ($($s),*) );
     }
 }
 
@@ -24,9 +24,9 @@ macro_rules! hsm_delayed_transition {
 
 #[macro_export]
 macro_rules! hsm_impl_state {
-    ($state:ident, $events:ident, $states:ident, $($pat:pat => $result:expr),*) => {
-        impl $crate::State<$events, $states> for $state<$events, $states> {
-            fn handle_event(&mut self, evt: $crate::Event<$events>, probe: bool) -> $crate::Action<$states> {
+    ($state:ident, $events:ident, $states:ident, $shr_data:ident, $($pat:pat => $result:expr),*) => {
+        impl $crate::State<$events, $states, $shr_data> for $state<$events, $states, $shr_data> {
+            fn handle_event(&mut self, shr_data: &mut $shr_data, evt: $crate::Event<$events>, probe: bool) -> $crate::Action<$states> {
                 match evt {
                     $( $pat => $result),*
                 }
@@ -48,12 +48,12 @@ macro_rules! _hsm_create_states {
 #[macro_export]
 macro_rules! _hsm_create_state_common {
     ($nam:ident) => {
-        impl<T, E> $crate::Name for $nam<T, E> {
+        impl<T, E, F> $crate::Name for $nam<T, E, F> {
             fn name(&self) -> &'static str {
                 stringify!($nam)
             }
         }
-        impl<T, E: Clone> $crate::Parent<E> for $nam<T, E> {
+        impl<T, E: Clone, F> $crate::Parent<E> for $nam<T, E, F> {
             fn get_parent(&self) -> Option<E> {
                 self.parent.clone()
             }
@@ -68,15 +68,17 @@ macro_rules! _hsm_create_state_common {
 macro_rules! _hsm_create_state {
     ($nam:ident) => {
         #[derive(Debug)]
-        struct $nam<T, E> {
-            _phantom_events: ::std::marker::PhantomData<T>,
-            parent         : Option<E>
+        struct $nam<T, E, F> {
+            _phantom_events : ::std::marker::PhantomData<T>,
+            _phantom_shr_dat: ::std::marker::PhantomData<F>,
+            parent          : Option<E>
         }
-        impl<T, E> $crate::Initializer for $nam<T, E> {
+        impl<T, E, F> $crate::Initializer for $nam<T, E, F> {
             fn new() -> Self {
                 $nam {
-                    _phantom_events: ::std::marker::PhantomData,
-                    parent         : None
+                    _phantom_events : ::std::marker::PhantomData,
+                    _phantom_shr_dat: ::std::marker::PhantomData,
+                    parent          : None
                 }
             }
         }
@@ -84,17 +86,19 @@ macro_rules! _hsm_create_state {
     };
     ($nam:ident { $($field_name:ident : $field_type:ty = $field_default:expr),* }) => {
         #[derive(Debug)]
-        struct $nam<T, E> {
-            _phantom_events: ::std::marker::PhantomData<T>,
-            parent         : Option<E>,
-            $( $field_name : $field_type ),*
+        struct $nam<T, E, F> {
+            _phantom_events : ::std::marker::PhantomData<T>,
+            _phantom_shr_dat: ::std::marker::PhantomData<F>,
+            parent          : Option<E>,
+            $( $field_name  : $field_type ),*
         }
-        impl<T, E> $crate::Initializer for $nam<T, E> {
+        impl<T, E, F> $crate::Initializer for $nam<T, E, F> {
             fn new() -> Self {
                 $nam {
-                    _phantom_events: ::std::marker::PhantomData,
-                    parent         : None,
-                    $( $field_name : $field_default ),*
+                    _phantom_events : ::std::marker::PhantomData,
+                    _phantom_shr_dat: ::std::marker::PhantomData,
+                    parent          : None,
+                    $( $field_name  : $field_default ),*
                 }
             }
         }
@@ -122,11 +126,11 @@ macro_rules! _hsm_create_state_enum {
 
 #[macro_export]
 macro_rules! _hsm_create_state_struct {
-    ($st_str:ident, $st_en:ident, $st_evt:ty, ($($s:ident),*) ) => {
+    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ident, ($($s:ident),*) ) => {
         #[derive(Debug)]
         #[allow(non_snake_case)]
         struct $st_str {
-            $( $s : $s<$st_evt, $st_en> ),*
+            $( $s : $s<$st_evt, $st_en, $shr_dat> ),*
         }
         impl $crate::Initializer for $st_str {
             fn new() -> Self {
@@ -135,8 +139,8 @@ macro_rules! _hsm_create_state_struct {
                 }
             }
         }
-        impl $crate::StateLookup<$st_en, $st_evt> for $st_str {
-            fn lookup(&mut self, typ: &$st_en) -> &mut $crate::State<$st_evt, $st_en> {
+        impl $crate::StateLookup<$st_en, $st_evt, $shr_dat> for $st_str {
+            fn lookup(&mut self, typ: &$st_en) -> &mut $crate::State<$st_evt, $st_en, $shr_dat> {
                 match *typ {
                     $($st_en::$s => &mut self.$s ),*
                 }
