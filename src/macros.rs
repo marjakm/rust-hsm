@@ -4,6 +4,11 @@ macro_rules! hsm_define_objects {
         _hsm_create_states!($($s),*);
         _hsm_create_state_enum!($st_en, ($($s),*));
         _hsm_create_state_struct!($st_str, $st_en, $st_evt, ($($s),*) );
+    };
+    ($st_str:ident, $st_en:ident, $st_evt:ty, ( $($s:ident $x:tt),*)) => {
+        _hsm_create_states!( $($s $x),* );
+        _hsm_create_state_enum!($st_en, ($($s),*));
+        _hsm_create_state_struct!($st_str, $st_en, $st_evt, ($($s),*) );
     }
 }
 
@@ -34,6 +39,9 @@ macro_rules! hsm_impl_state {
 macro_rules! _hsm_create_states {
     ( $($s:ident),* ) => {
         $(_hsm_create_state!($s);)*
+    };
+    ($($s:ident $x:tt),*) => {
+        $(_hsm_create_state!($s $x);)*
     }
 }
 
@@ -74,11 +82,11 @@ macro_rules! _hsm_create_state {
         }
         _hsm_create_state_common!($nam);
     };
-    ($nam:ident, { $($field_name:ident: $field_type:ty: $field_default:expr),* }) => {
+    ($nam:ident { $($field_name:ident : $field_type:ty = $field_default:expr),* }) => {
         #[derive(Debug)]
         struct $nam<T, E> {
             _phantom_events: ::std::marker::PhantomData<T>,
-            parent         : Option<E>
+            parent         : Option<E>,
             $( $field_name : $field_type ),*
         }
         impl<T, E> $crate::Initializer for $nam<T, E> {
