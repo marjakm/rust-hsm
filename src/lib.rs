@@ -76,10 +76,11 @@ impl<UsrStEnum, UsrEvtEnum: Clone> Task<UsrStEnum, UsrEvtEnum> {
 }
 
 pub struct StateMachine<UsrStStr, UsrStEnum, UsrEvtEnum: Clone> {
-    current  : UsrStEnum,
-    states   : UsrStStr,
-    tasklist : Vec<Task<UsrStEnum, UsrEvtEnum>>,
-    _phantom : ::std::marker::PhantomData<UsrEvtEnum>
+    current     : UsrStEnum,
+    states      : UsrStStr,
+    exit_tasks  : Vec<Task<UsrStEnum, UsrEvtEnum>>,
+    enter_tasks : Vec<Task<UsrStEnum, UsrEvtEnum>>,
+    _phantom    : ::std::marker::PhantomData<UsrEvtEnum>
 }
 impl<UsrStStr, UsrStEnum, UsrEvtEnum> StateMachine<UsrStStr, UsrStEnum, UsrEvtEnum>
     where UsrStStr   : Initializer + StateLookup<UsrStEnum, UsrEvtEnum>,
@@ -88,52 +89,57 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum> StateMachine<UsrStStr, UsrStEnum, UsrEvtEn
 
     pub fn new(initial: UsrStEnum) -> Self {
         StateMachine {
-            current  : initial,
-            states   : UsrStStr::new(),
-            tasklist : Vec::new(),
-            _phantom : ::std::marker::PhantomData
+            current     : initial,
+            states      : UsrStStr::new(),
+            exit_tasks  : Vec::new(),
+            enter_tasks : Vec::new(),
+            _phantom    : ::std::marker::PhantomData
         }
     }
 
-    fn process_tasklist(&mut self) {
-        for task in self.tasklist.iter() {
+    fn process_exit_tasks(&mut self) {
+        for task in self.exit_tasks.iter() {
             debug!("send {:?} to {:?}", task.event, task.state);
             self.states.lookup(&task.state).handle_event(task.event.clone());
         }
-        self.tasklist.clear();
+        self.exit_tasks.clear();
+    }
+
+    fn process_enter_tasks(&mut self) {
+        self.enter_tasks.reverse();
+        for task in self.enter_tasks.iter() {
+            debug!("send {:?} to {:?}", task.event, task.state);
+            self.states.lookup(&task.state).handle_event(task.event.clone());
+        }
+        self.enter_tasks.clear();
     }
 
     fn transition(&mut self, from_state: UsrStEnum, to_state: UsrStEnum) {
         let mut parent = Some(from_state);
         while let Some(state) = parent {
             parent = self.states.lookup(&state).get_parent();
-            self.tasklist.push(Task::new(state, Event::Exit));
+            self.exit_tasks.push(Task::new(state, Event::Exit));
         }
         let mut same_idx: Option<usize> = None;
-        let mut enter_list = Vec::new();
         parent = Some(to_state);
         'outer: while let Some(state) = parent {
-            for (i, task) in self.tasklist.iter().enumerate() {
+            for (i, task) in self.exit_tasks.iter().enumerate() {
                 if task.state == state {
                     same_idx = Some(i);
                     break 'outer;
                 }
             }
             parent = self.states.lookup(&state).get_parent();
-            enter_list.push(Task::new(state, Event::Enter));
+            self.enter_tasks.push(Task::new(state, Event::Enter));
         }
         if let Some(i) = same_idx {
-            let drop_num = self.tasklist.len() - i;
+            let drop_num = self.exit_tasks.len() - i;
             for _ in 0..drop_num {
-                self.tasklist.pop();
+                self.exit_tasks.pop();
             }
         }
-        self.process_tasklist();
-        enter_list.reverse();
-        for task in enter_list.iter() {
-            debug!("send {:?} to {:?}", task.event, task.state);
-            self.states.lookup(&task.state).handle_event(task.event.clone());
-        }
+        self.process_exit_tasks();
+        self.process_enter_tasks();
     }
 
     pub fn input(&mut self, evt: Event<UsrEvtEnum>) {
@@ -145,12 +151,12 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum> StateMachine<UsrStStr, UsrStEnum, UsrEvtEn
             action = self.states.lookup(&state).handle_event(evt.clone());
             match action {
                 Action::Ignore               => {
-                    self.tasklist.clear();
+                    self.exit_tasks.clear();
                     break
                 },
                 Action::Parent               => {
                     if let Some(parent) = self.states.lookup(&state).get_parent() {
-                        self.tasklist.push(Task::new(state.clone(), Event::Exit));
+                        self.exit_tasks.push(Task::new(state.clone(), Event::Exit));
                         state = parent;
                     } else {
                         error!("State {:?} responded with Action::Parent to event {:?}, but the state has no parent", state, evt);
@@ -158,13 +164,13 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum> StateMachine<UsrStStr, UsrStEnum, UsrEvtEn
                 },
                 Action::Transition(x)        => {
                     debug!("send {:?} to {:?}", evt, state);
-                    self.process_tasklist();  // exit until in the parent that handles the signal
+                    self.process_exit_tasks();  // exit until in the parent that handles the signal
                     self.current = x.clone(); // signal allready handled
                     self.transition(state.clone(), x);
                     break;
                 },
                 Action::ClosureTransition(x) => {
-                    self.process_tasklist(); // exit until in the parent that handles the signal
+                    self.process_exit_tasks(); // exit until in the parent that handles the signal
                     debug!("send {:?} to {:?}", evt, state);
                     self.current = x();      // handle the signal
                     let current_state = self.current.clone();
