@@ -17,24 +17,13 @@ pub trait Initializer {
     fn new() -> Self;
 }
 
+#[derive(Debug)]
 pub enum Action<UsrStEnum: fmt::Debug> {
     Ignore,
     Parent,
+    DelayedTransition,
     Transition(UsrStEnum),
-    ClosureTransition(Box<Fn() -> UsrStEnum>)
 }
-impl<UsrStEnum: fmt::Debug> fmt::Debug for Action<UsrStEnum> {
-    fn fmt(&self, f:&mut fmt::Formatter) -> Result<(), fmt::Error> {
-        match self {
-            &Action::Ignore               => try!(fmt::Debug::fmt("Ignore", f)),
-            &Action::Parent               => try!(fmt::Debug::fmt("Parent", f)),
-            &Action::Transition(ref x)    => try!(fmt::Debug::fmt(&format!("Transition({:?})", x), f)),
-            &Action::ClosureTransition(_) => try!(fmt::Debug::fmt("ClosureTransition", f)),
-        };
-        Ok(())
-    }
-}
-
 
 #[derive(Debug, Clone)]
 pub enum Event<UsrEvtEnum: Clone> {
@@ -50,7 +39,7 @@ pub trait Parent<UsrStEnum> {
 
 pub trait State<UsrEvtEnum, UsrStEnum>
     where Self: Name+Parent<UsrStEnum> {
-    fn handle_event(&mut self, evt: Event<UsrEvtEnum>) -> Action<UsrStEnum>;
+    fn handle_event(&mut self, evt: Event<UsrEvtEnum>, probe: bool) -> Action<UsrStEnum>;
 }
 impl<'a, UsrEvtEnum, UsrStEnum> fmt::Debug for &'a State<UsrEvtEnum, UsrStEnum> {
     fn fmt(&self, f:&mut fmt::Formatter) -> Result<(), fmt::Error> {
@@ -112,7 +101,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum> StateMachine<UsrStStr, UsrStEnum, UsrEvtEn
     fn process_exit_tasks(&mut self) {
         for task in self.exit_tasks.iter() {
             debug!("send {:?} to {:?}", task.event, task.state);
-            self.states.lookup(&task.state).handle_event(task.event.clone());
+            self.states.lookup(&task.state).handle_event(task.event.clone(), false);
         }
         self.exit_tasks.clear();
     }
@@ -121,7 +110,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum> StateMachine<UsrStStr, UsrStEnum, UsrEvtEn
         self.enter_tasks.reverse();
         for task in self.enter_tasks.iter() {
             debug!("send {:?} to {:?}", task.event, task.state);
-            self.states.lookup(&task.state).handle_event(task.event.clone());
+            self.states.lookup(&task.state).handle_event(task.event.clone(), false);
         }
         self.enter_tasks.clear();
     }
@@ -161,11 +150,11 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum> StateMachine<UsrStStr, UsrStEnum, UsrEvtEn
         let mut action;
         let mut state = self.current.clone();
         loop {
-            action = self.states.lookup(&state).handle_event(evt.clone());
+            action = self.states.lookup(&state).handle_event(evt.clone(), true);
             match action {
                 Action::Ignore               => {
                     self.exit_tasks.clear();
-                    break
+                    break;
                 },
                 Action::Parent               => {
                     if let Some(parent) = self.states.lookup(&state).get_parent() {
@@ -173,6 +162,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum> StateMachine<UsrStStr, UsrStEnum, UsrEvtEn
                         state = parent;
                     } else {
                         error!("State {:?} responded with Action::Parent to event {:?}, but the state has no parent", state, evt);
+                        break;
                     }
                 },
                 Action::Transition(x)        => {
@@ -182,12 +172,16 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum> StateMachine<UsrStStr, UsrStEnum, UsrEvtEn
                     self.transition(state.clone(), x);
                     break;
                 },
-                Action::ClosureTransition(x) => {
+                Action::DelayedTransition => {
                     self.process_exit_tasks(); // exit until in the parent that handles the signal
                     debug!("send {:?} to {:?}", evt, state);
-                    self.current = x();      // handle the signal
-                    let current_state = self.current.clone();
-                    self.transition(state.clone(), current_state);
+                    if let Action::Transition(x) = self.states.lookup(&state).handle_event(evt.clone(), false) { // handle the signal
+                        self.current = x.clone();
+                        self.transition(state.clone(), x);
+                    } else {
+                        error!("State {:?} probed Action::DelayedTransition to event {:?}, but doesn't return Action::Transition", state, evt);
+                        self.current = state;
+                    }
                     break;
                 },
             }

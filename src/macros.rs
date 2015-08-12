@@ -8,15 +8,20 @@ macro_rules! hsm_define_objects {
 }
 
 #[macro_export]
-macro_rules! hsm_closure_transition {
-    ($x:block) => { $crate::Action::ClosureTransition(Box::new( move || $x)) }
+macro_rules! hsm_delayed_transition {
+    ($probe:ident, $x:block) => {
+        match $probe {
+            true  => $crate::Action::DelayedTransition,
+            false => $crate::Action::Transition($x)
+        }
+    }
 }
 
 #[macro_export]
 macro_rules! hsm_impl_state {
     ($state:ident, $events:ident, $states:ident, $($pat:pat => $result:expr),*) => {
         impl $crate::State<$events, $states> for $state<$events, $states> {
-            fn handle_event(&mut self, evt: $crate::Event<$events>) -> $crate::Action<$states> {
+            fn handle_event(&mut self, evt: $crate::Event<$events>, probe: bool) -> $crate::Action<$states> {
                 match evt {
                     $( $pat => $result),*
                 }
