@@ -34,7 +34,6 @@ pub enum Event<UsrEvtEnum: Clone> {
 
 pub trait Parent<UsrStEnum> {
     fn get_parent(&self) -> Option<UsrStEnum>;
-    fn set_parent(&mut self, newparent: UsrStEnum);
 }
 
 pub trait State<UsrEvtEnum, UsrStEnum, UsrShrData>

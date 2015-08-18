@@ -36,6 +36,27 @@ macro_rules! hsm_impl_state {
 }
 
 #[macro_export]
+macro_rules! hsm_state_parents {
+    ($st_en:ident ; $($nam:ident -> $parent:ident),*) => {
+        $(_hsm_impl_state_parent!($st_en ; $nam -> $parent);)*
+    }
+}
+
+#[macro_export]
+macro_rules! _hsm_impl_state_parent {
+    ($st_en:ident ; $nam:ident -> None) => {
+        impl<T, F> $crate::Parent<$st_en> for $nam<T, $st_en, F> {
+            fn get_parent(&self) -> Option<$st_en> { None }
+        }
+    };
+    ($st_en:ident ; $nam:ident -> $parent:ident) => {
+        impl<T, F> $crate::Parent<$st_en> for $nam<T, $st_en, F> {
+            fn get_parent(&self) -> Option<$st_en> { Some($st_en::$parent) }
+        }
+    }
+}
+
+#[macro_export]
 macro_rules! _hsm_create_states {
     ( $($s:ident),* ) => {
         $(_hsm_create_state!($s);)*
@@ -53,14 +74,6 @@ macro_rules! _hsm_create_state_common {
                 stringify!($nam)
             }
         }
-        impl<T, E: Clone, F> $crate::Parent<E> for $nam<T, E, F> {
-            fn get_parent(&self) -> Option<E> {
-                self.parent.clone()
-            }
-            fn set_parent(&mut self, newparent: E) {
-                self.parent = Some(newparent);
-            }
-        }
     }
 }
 
@@ -71,14 +84,14 @@ macro_rules! _hsm_create_state {
         struct $nam<T, E, F> {
             _phantom_events : ::std::marker::PhantomData<T>,
             _phantom_shr_dat: ::std::marker::PhantomData<F>,
-            parent          : Option<E>
+            _phantom_state  : ::std::marker::PhantomData<E>,
         }
         impl<T, E, F> $crate::Initializer for $nam<T, E, F> {
             fn new() -> Self {
                 $nam {
                     _phantom_events : ::std::marker::PhantomData,
                     _phantom_shr_dat: ::std::marker::PhantomData,
-                    parent          : None
+                    _phantom_state  : ::std::marker::PhantomData,
                 }
             }
         }
@@ -89,7 +102,7 @@ macro_rules! _hsm_create_state {
         struct $nam<T, E, F> {
             _phantom_events : ::std::marker::PhantomData<T>,
             _phantom_shr_dat: ::std::marker::PhantomData<F>,
-            parent          : Option<E>,
+            _phantom_state  : ::std::marker::PhantomData<E>,
             $( $field_name  : $field_type ),*
         }
         impl<T, E, F> $crate::Initializer for $nam<T, E, F> {
@@ -97,7 +110,7 @@ macro_rules! _hsm_create_state {
                 $nam {
                     _phantom_events : ::std::marker::PhantomData,
                     _phantom_shr_dat: ::std::marker::PhantomData,
-                    parent          : None,
+                    _phantom_state  : ::std::marker::PhantomData,
                     $( $field_name  : $field_default ),*
                 }
             }
