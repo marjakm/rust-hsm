@@ -63,7 +63,7 @@ hsm_define_objects!(StateStruct, States, Events, SharedData, (
 hsm_state_parents!(States; WaitMinusOrInt -> None, WaitInt -> None, WaitOp -> None );
 
 
-impl hsm::State<Events, States, SharedData> for WaitMinusOrInt<Events, States, SharedData> {
+impl hsm::State<Events, States, SharedData> for WaitMinusOrInt {
     fn handle_event(&mut self, shr_data: &mut SharedData, evt: hsm::Event<Events>, probe: bool) -> hsm::Action<States> {
         self.counter += 1;
         info!("{} time in WaitMinusOrInt, shared: {:?}", self.counter, shr_data);
@@ -81,7 +81,7 @@ impl hsm::State<Events, States, SharedData> for WaitMinusOrInt<Events, States, S
     }
 }
 
-impl hsm::State<Events, States, SharedData> for WaitInt<Events, States, SharedData> {
+impl hsm::State<Events, States, SharedData> for WaitInt {
     fn handle_event(&mut self, shr_data: &mut SharedData, evt: hsm::Event<Events>, probe: bool) -> hsm::Action<States> {
         match evt {
             hsm::Event::User(Events::Int(x)) => hsm_delayed_transition!(probe, {
