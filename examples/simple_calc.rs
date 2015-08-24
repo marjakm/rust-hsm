@@ -37,6 +37,7 @@ enum Events {
     Int(u32)
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 enum Tokens {
     Plus,
@@ -64,6 +65,7 @@ hsm_state_parents!(States; WaitMinusOrInt -> None, WaitInt -> None, WaitOp -> No
 
 
 impl hsm::State<Events, States, SharedData> for WaitMinusOrInt {
+    #[allow(unused_variables)]
     fn handle_event(&mut self, shr_data: &mut SharedData, evt: hsm::Event<Events>, probe: bool) -> hsm::Action<States> {
         self.counter += 1;
         info!("{} time in WaitMinusOrInt, shared: {:?}", self.counter, shr_data);
@@ -82,6 +84,7 @@ impl hsm::State<Events, States, SharedData> for WaitMinusOrInt {
 }
 
 impl hsm::State<Events, States, SharedData> for WaitInt {
+    #[allow(unused_variables)]
     fn handle_event(&mut self, shr_data: &mut SharedData, evt: hsm::Event<Events>, probe: bool) -> hsm::Action<States> {
         match evt {
             hsm::Event::User(Events::Int(x)) => hsm_delayed_transition!(probe, {

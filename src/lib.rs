@@ -55,11 +55,15 @@ pub enum Event<UsrEvtEnum: Clone> {
 }
 
 pub trait Parent<UsrStEnum> {
+    fn get_parent() -> Option<UsrStEnum>;
+}
+
+pub trait InstanceParent<UsrStEnum> {
     fn get_parent(&self) -> Option<UsrStEnum>;
 }
 
 pub trait State<UsrEvtEnum, UsrStEnum, UsrShrData>
-    where Self: Name+Parent<UsrStEnum> {
+    where Self: Name {
     fn handle_event(&mut self, shr_data: &mut UsrShrData, evt: Event<UsrEvtEnum>, probe: bool) -> Action<UsrStEnum>;
 }
 impl<'a, UsrEvtEnum, UsrStEnum, UsrShrData> fmt::Debug for &'a State<UsrEvtEnum, UsrStEnum, UsrShrData> {
@@ -96,7 +100,7 @@ pub struct StateMachine<UsrStStr, UsrStEnum, UsrEvtEnum: Clone, UsrShrData> {
 }
 impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData>
     where UsrStStr   : Initializer + StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData>,
-          UsrStEnum  : fmt::Debug+Eq+Clone,
+          UsrStEnum  : fmt::Debug+Eq+Clone+InstanceParent<UsrStEnum>,
           UsrEvtEnum : fmt::Debug+Clone {
 
     pub fn new(initial: UsrStEnum, shared_data: UsrShrData) -> Self {
@@ -114,7 +118,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
     pub fn start(&mut self) {
         let mut parent = Some(self.current.clone());
         while let Some(state) = parent {
-            parent = self.states.lookup(&state).get_parent();
+            parent = state.get_parent();
             self.enter_tasks.push(Task::new(state, Event::Enter));
         }
         self.process_enter_tasks();
@@ -141,7 +145,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
     fn transition(&mut self, from_state: UsrStEnum, to_state: UsrStEnum) {
         let mut parent = Some(from_state);
         while let Some(state) = parent {
-            parent = self.states.lookup(&state).get_parent();
+            parent = state.get_parent();
             self.exit_tasks.push(Task::new(state, Event::Exit));
         }
         let mut same_idx: Option<usize> = None;
@@ -153,7 +157,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
                     break 'outer;
                 }
             }
-            parent = self.states.lookup(&state).get_parent();
+            parent = state.get_parent();
             self.enter_tasks.push(Task::new(state, Event::Enter));
         }
         if let Some(i) = same_idx {
@@ -180,7 +184,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
                     break;
                 },
                 Action::Parent               => {
-                    if let Some(parent) = self.states.lookup(&state).get_parent() {
+                    if let Some(parent) = state.get_parent() {
                         self.exit_tasks.push(Task::new(state.clone(), Event::Exit));
                         state = parent;
                     } else {

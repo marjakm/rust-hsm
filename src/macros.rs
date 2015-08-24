@@ -25,11 +25,13 @@
 #[macro_export]
 macro_rules! hsm_define_objects {
     ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ident, ( $($s:ident),* ) ) => {
+        use $crate::Parent;
         _hsm_create_states!($($s),*);
         _hsm_create_state_enum!($st_en, ($($s),*));
         _hsm_create_state_struct!($st_str, $st_en, $st_evt, $shr_dat, ($($s),*) );
     };
     ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ident, ( $($s:ident $x:tt),*)) => {
+        use $crate::Parent;
         _hsm_create_states!( $($s $x),* );
         _hsm_create_state_enum!($st_en, ($($s),*));
         _hsm_create_state_struct!($st_str, $st_en, $st_evt, $shr_dat, ($($s),*) );
@@ -50,6 +52,7 @@ macro_rules! hsm_delayed_transition {
 macro_rules! hsm_impl_state {
     ($state:ident, $events:ident, $states:ident, $shr_data:ident, $($pat:pat => $result:expr),*) => {
         impl $crate::State<$events, $states, $shr_data> for $state {
+            #[allow(unused_variables)]
             fn handle_event(&mut self, shr_data: &mut $shr_data, evt: $crate::Event<$events>, probe: bool) -> $crate::Action<$states> {
                 match evt {
                     $( $pat => $result),*
@@ -70,12 +73,12 @@ macro_rules! hsm_state_parents {
 macro_rules! _hsm_impl_state_parent {
     ($st_en:ident ; $nam:ident -> None) => {
         impl $crate::Parent<$st_en> for $nam {
-            fn get_parent(&self) -> Option<$st_en> { None }
+            fn get_parent() -> Option<$st_en> { None }
         }
     };
     ($st_en:ident ; $nam:ident -> $parent:ident) => {
         impl $crate::Parent<$st_en> for $nam {
-            fn get_parent(&self) -> Option<$st_en> { Some($st_en::$parent) }
+            fn get_parent() -> Option<$st_en> { Some($st_en::$parent) }
         }
     }
 }
@@ -144,6 +147,13 @@ macro_rules! _hsm_create_state_enum {
                     $( $st_en::$s => try!(::std::fmt::Display::fmt(stringify!($s), f)) ),*
                 };
                 Ok(())
+            }
+        }
+        impl $crate::InstanceParent<$st_en> for $st_en {
+            fn get_parent(&self) -> Option<$st_en> {
+                match *self {
+                    $( $st_en::$s => $s::get_parent() ),*
+                }
             }
         }
     }
