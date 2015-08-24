@@ -111,7 +111,7 @@ macro_rules! _hsm_create_state {
         struct $nam;
         impl $crate::Initializer for $nam {
             fn new() -> Self {
-                $nam;
+                $nam
             }
         }
         _hsm_create_state_common!($nam);
