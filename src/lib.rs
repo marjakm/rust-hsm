@@ -121,7 +121,10 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
             parent = state.get_parent();
             self.enter_tasks.push(Task::new(state, Event::Enter));
         }
-        self.process_enter_tasks();
+        if let Some(state) = self.process_enter_tasks() {
+            let cur = self.current.clone();
+            self.transition(cur, state);
+        }
         self.started = true;
     }
 
@@ -139,22 +142,39 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
         self.exit_tasks.clear();
     }
 
-    fn process_enter_tasks(&mut self) {
-        self.enter_tasks.reverse();
-        for task in self.enter_tasks.iter() {
-            debug!("send {:?} to {:?}", task.event, task.state);
-            match self.states.lookup(&task.state).handle_event(
-                  &mut self.shr_data, task.event.clone(), false){
-                Action::Ignore | Action::Parent => {},
-                _ => error!("Transitions from enter events are not allowed, \
-                            ignoring transition from state {:?} on event {:?}",
-                            task.state, task.event)
+    fn process_enter_tasks(&mut self) -> Option<UsrStEnum> {
+        let mut ret = None;
+        if let Some(last) = self.enter_tasks.first().map(|x| x.clone()) {
+            self.enter_tasks.reverse();
+            for task in self.enter_tasks.iter() {
+                debug!("send {:?} to {:?}", task.event, task.state);
+                match self.states.lookup(&task.state).handle_event(
+                      &mut self.shr_data, task.event.clone(), false){
+                    Action::Ignore | Action::Parent => {},
+                    Action::Transition(x) => {
+                        if last.state == task.state {
+                            ret = Some(x);
+                            break
+                        } else {
+                            error!("Transitions from enter events are only allowed for \
+                                    the target state for the current transition, \
+                                    ignoring transition from state {:?} on event {:?}",
+                                    task.state, task.event)
+                        }
+                    },
+                    Action::DelayedTransition => {
+                        error!("State {:?} returned Action::DelayedTransition to event {:?} \
+                                when probe was turned off, acting as if ignore was returned",
+                                task.state, task.event)
+                    }
+                }
             }
+            self.enter_tasks.clear();
         }
-        self.enter_tasks.clear();
+        ret
     }
 
-    fn transition(&mut self, from_state: UsrStEnum, to_state: UsrStEnum) {
+    fn _transition(&mut self, from_state: UsrStEnum, to_state: UsrStEnum) -> Option<UsrStEnum> {
         let mut parent = Some(from_state);
         while let Some(state) = parent {
             parent = state.get_parent();
@@ -179,7 +199,15 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
             }
         }
         self.process_exit_tasks();
-        self.process_enter_tasks();
+        self.process_enter_tasks()
+    }
+
+    fn transition(&mut self, mut from_state: UsrStEnum, mut to_state: UsrStEnum) {
+        while let Some(st) = self._transition(from_state, to_state.clone()) {
+            from_state = to_state;
+            to_state = st;
+        }
+        self.current = to_state;
     }
 
     pub fn input(&mut self, evt: UsrEvtEnum) {
@@ -208,7 +236,6 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
                 Action::Transition(x)        => {
                     debug!("send {:?} to {:?}", evt, state);
                     self.process_exit_tasks();  // exit until in the parent that handles the signal
-                    self.current = x.clone(); // signal allready handled
                     self.transition(state.clone(), x);
                     break;
                 },
@@ -216,7 +243,6 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
                     self.process_exit_tasks(); // exit until in the parent that handles the signal
                     debug!("send {:?} to {:?}", evt, state);
                     if let Action::Transition(x) = self.states.lookup(&state).handle_event(&mut self.shr_data, evt.clone(), false) { // handle the signal
-                        self.current = x.clone();
                         self.transition(state.clone(), x);
                     } else {
                         error!("State {:?} probed Action::DelayedTransition to event {:?}, but doesn't return Action::Transition", state, evt);
