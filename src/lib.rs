@@ -128,7 +128,13 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
     fn process_exit_tasks(&mut self) {
         for task in self.exit_tasks.iter() {
             debug!("send {:?} to {:?}", task.event, task.state);
-            self.states.lookup(&task.state).handle_event(&mut self.shr_data, task.event.clone(), false);
+            match self.states.lookup(&task.state).handle_event(
+                  &mut self.shr_data, task.event.clone(), false){
+                Action::Ignore | Action::Parent => {},
+                _ => error!("Transitions from exit events are not allowed, \
+                            ignoring transition from state {:?} on event {:?}",
+                            task.state, task.event)
+            };
         }
         self.exit_tasks.clear();
     }
@@ -137,7 +143,13 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
         self.enter_tasks.reverse();
         for task in self.enter_tasks.iter() {
             debug!("send {:?} to {:?}", task.event, task.state);
-            self.states.lookup(&task.state).handle_event(&mut self.shr_data, task.event.clone(), false);
+            match self.states.lookup(&task.state).handle_event(
+                  &mut self.shr_data, task.event.clone(), false){
+                Action::Ignore | Action::Parent => {},
+                _ => error!("Transitions from enter events are not allowed, \
+                            ignoring transition from state {:?} on event {:?}",
+                            task.state, task.event)
+            }
         }
         self.enter_tasks.clear();
     }
