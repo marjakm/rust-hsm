@@ -31,7 +31,7 @@ extern crate time;
 
 
 #[derive(Debug, Clone)]
-enum Events {
+pub enum Events {
     Plus,
     Minus,
     Int(u32)
@@ -39,14 +39,14 @@ enum Events {
 
 #[allow(dead_code)]
 #[derive(Debug)]
-enum Tokens {
+pub enum Tokens {
     Plus,
     Minus,
     Int(i32)
 }
 
 #[derive(Debug)]
-struct SharedData {
+pub struct SharedData {
     accepted_tokens: Vec<Tokens>
 }
 impl SharedData {
@@ -107,10 +107,10 @@ fn main() {
     conf_logger();
     let mut sm = hsm::StateMachine::<StateStruct, States, Events, SharedData>::new(States::WaitMinusOrInt, SharedData::new());
     sm.start();
-    sm.input(hsm::Event::User(Events::Int(4)));
-    sm.input(hsm::Event::User(Events::Plus));
-    sm.input(hsm::Event::User(Events::Minus));
-    sm.input(hsm::Event::User(Events::Int(5)));
+    sm.input(Events::Int(4));
+    sm.input(Events::Plus);
+    sm.input(Events::Minus);
+    sm.input(Events::Int(5));
 }
 
 fn conf_logger() {
