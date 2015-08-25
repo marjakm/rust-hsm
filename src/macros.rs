@@ -23,6 +23,18 @@
  */
 
 #[macro_export]
+macro_rules! hsm_define_objects_noparents {
+    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ident, ( $($s:ident),* ) ) => {
+        hsm_define_objects!($st_str, $st_en, $st_evt, $shr_dat, ($($s),*) );
+        hsm_state_parents!($st_en ; $($s -> None),*);
+    };
+    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ident, ( $($s:ident $x:tt),*)) => {
+        hsm_define_objects!($st_str, $st_en, $st_evt, $shr_dat, ($($s $x),*) );
+        hsm_state_parents!($st_en ; $($s -> None),*);
+    }
+}
+
+#[macro_export]
 macro_rules! hsm_define_objects {
     ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ident, ( $($s:ident),* ) ) => {
         use $crate::Parent;

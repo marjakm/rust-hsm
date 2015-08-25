@@ -55,14 +55,11 @@ impl SharedData {
     }
 }
 
-hsm_define_objects!(StateStruct, States, Events, SharedData, (
+hsm_define_objects_noparents!(StateStruct, States, Events, SharedData, (
     WaitMinusOrInt {counter: u8 = 0},
     WaitInt {},
     WaitOp {}
 ));
-
-hsm_state_parents!(States; WaitMinusOrInt -> None, WaitInt -> None, WaitOp -> None );
-
 
 impl hsm::State<Events, States, SharedData> for WaitMinusOrInt {
     #[allow(unused_variables)]
