@@ -50,11 +50,23 @@ macro_rules! hsm_delayed_transition {
 
 #[macro_export]
 macro_rules! hsm_impl_state {
-    ($state:ident, $events:ident, $states:ident, $shr_data:ident, $($pat:pat => $result:expr),*) => {
+    ($state:ident, $events:ident, $states:ident, $shr_data:ident,
+     $($pat:pat => $result:expr),*) => {
         impl $crate::State<$events, $states, $shr_data> for $state {
             #[allow(unused_variables)]
             fn handle_event(&mut self, shr_data: &mut $shr_data, evt: $crate::Event<$events>, probe: bool) -> $crate::Action<$states> {
                 match evt {
+                    $( $pat => $result),*
+                }
+            }
+        }
+    };
+    ($state:ident, $events:ident, $states:ident, $shr_data:ident,
+     $shr:ident, $evt:ident, $probe:ident, $($pat:pat => $result:expr),*) => {
+        impl $crate::State<$events, $states, $shr_data> for $state {
+            #[allow(unused_variables)]
+            fn handle_event(&mut self, $shr: &mut $shr_data, $evt: $crate::Event<$events>, $probe: bool) -> $crate::Action<$states> {
+                match $evt {
                     $( $pat => $result),*
                 }
             }

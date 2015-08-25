@@ -83,19 +83,17 @@ impl hsm::State<Events, States, SharedData> for WaitMinusOrInt {
     }
 }
 
-impl hsm::State<Events, States, SharedData> for WaitInt {
-    #[allow(unused_variables)]
-    fn handle_event(&mut self, shr_data: &mut SharedData, evt: hsm::Event<Events>, probe: bool) -> hsm::Action<States> {
-        match evt {
-            hsm::Event::User(Events::Int(x)) => hsm_delayed_transition!(probe, {
-                info!("int({:?})", x);
-                States::WaitOp
-            }),
-            _ => hsm::Action::Ignore
-        }
-    }
-}
+// Can't use self
+hsm_impl_state!(WaitInt, Events, States, SharedData, shr, evt, probe,
+    hsm::Event::User(Events::Int(x)) => hsm_delayed_transition!(probe, {
+        println!("{:?} {:?} {:?}", shr, evt, probe);
+        info!("int({:?})", x);
+        States::WaitOp
+    }),
+    _ => hsm::Action::Ignore
+);
 
+// Can't use self, shrared_data, event or probe
 hsm_impl_state!(WaitOp, Events, States, SharedData,
     hsm::Event::User(Events::Minus) => {
         info!("minus");
