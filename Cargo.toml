@@ -5,5 +5,7 @@ authors = ["Mattis Marjak <mattis.marjak@gmail.com>"]
 
 [dependencies]
 log     = "*"
+
+[dev-dependencies]
 fern    = "*"
 time    = "*"
