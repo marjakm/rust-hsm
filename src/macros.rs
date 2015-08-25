@@ -132,7 +132,7 @@ macro_rules! _hsm_create_state_common {
 macro_rules! _hsm_create_state {
     ($nam:ident) => {
         #[derive(Debug)]
-        struct $nam;
+        pub struct $nam;
         impl $crate::Initializer for $nam {
             fn new() -> Self {
                 $nam
@@ -142,7 +142,7 @@ macro_rules! _hsm_create_state {
     };
     ($nam:ident { $($field_name:ident : $field_type:ty = $field_default:expr),* }) => {
         #[derive(Debug)]
-        struct $nam {
+        pub struct $nam {
             _phantom        : ::std::marker::PhantomData<u8>,
             $( $field_name  : $field_type ),*
         }
@@ -162,7 +162,7 @@ macro_rules! _hsm_create_state {
 macro_rules! _hsm_create_state_enum {
     ($st_en:ident, ($($s:ident),*) ) => {
         #[derive(Debug, Clone, Eq, PartialEq)]
-        enum $st_en {
+        pub enum $st_en {
             $( $s ),*
         }
         impl ::std::fmt::Display for $st_en {
@@ -188,7 +188,7 @@ macro_rules! _hsm_create_state_struct {
     ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ident, ($($s:ident),*) ) => {
         #[derive(Debug)]
         #[allow(non_snake_case)]
-        struct $st_str {
+        pub struct $st_str {
             $( $s : $s ),*
         }
         impl $crate::Initializer for $st_str {
