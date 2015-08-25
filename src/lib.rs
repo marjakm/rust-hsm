@@ -182,8 +182,9 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
         self.process_enter_tasks();
     }
 
-    pub fn input(&mut self, evt: Event<UsrEvtEnum>) {
+    pub fn input(&mut self, evt: UsrEvtEnum) {
         assert!(self.started, "Can't call input before starting the state machine with start()");
+        let evt = Event::User(evt);
         debug!("state:  {:?}", self.current);
         debug!("input:  {:?}", evt);
         let mut action;
