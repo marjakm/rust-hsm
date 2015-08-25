@@ -131,7 +131,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
             match self.states.lookup(&task.state).handle_event(
                   &mut self.shr_data, task.event.clone(), false){
                 Action::Ignore | Action::Parent => {},
-                _ => error!("Transitions from exit events are not allowed, \
+                _ => panic!("Transitions from exit events are not allowed, \
                             ignoring transition from state {:?} on event {:?}",
                             task.state, task.event)
             };
@@ -146,7 +146,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
             match self.states.lookup(&task.state).handle_event(
                   &mut self.shr_data, task.event.clone(), false){
                 Action::Ignore | Action::Parent => {},
-                _ => error!("Transitions from enter events are not allowed, \
+                _ => panic!("Transitions from enter events are not allowed, \
                             ignoring transition from state {:?} on event {:?}",
                             task.state, task.event)
             }
@@ -201,7 +201,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
                         self.exit_tasks.push(Task::new(state.clone(), Event::Exit));
                         state = parent;
                     } else {
-                        error!("State {:?} responded with Action::Parent to event {:?}, but the state has no parent", state, evt);
+                        panic!("State {:?} responded with Action::Parent to event {:?}, but the state has no parent", state, evt);
                         break;
                     }
                 },
@@ -219,7 +219,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
                         self.current = x.clone();
                         self.transition(state.clone(), x);
                     } else {
-                        error!("State {:?} probed Action::DelayedTransition to event {:?}, but doesn't return Action::Transition", state, evt);
+                        panic!("State {:?} probed Action::DelayedTransition to event {:?}, but doesn't return Action::Transition", state, evt);
                         self.current = state;
                     }
                     break;
