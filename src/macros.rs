@@ -64,7 +64,7 @@ macro_rules! hsm_delayed_transition {
 macro_rules! hsm_impl_state {
     ($state:ident, $events:ident, $states:ident, $shr_data:ident,
      $($pat:pat => $result:expr),*) => {
-        impl $crate::State<$events, $states, $shr_data> for $state {
+        impl<'a, 'b, 'c, 'd, 'e> $crate::State<$events, $states, $shr_data> for $state {
             #[allow(unused_variables)]
             fn handle_event(&mut self, shr_data: &mut $shr_data, evt: &$crate::Event<$events>, probe: bool) -> $crate::Action<$states> {
                 match *evt {
@@ -75,7 +75,7 @@ macro_rules! hsm_impl_state {
     };
     ($state:ident, $events:ident, $states:ident, $shr_data:ident,
      $shr:ident, $evt:ident, $probe:ident, $($pat:pat => $result:expr),*) => {
-        impl $crate::State<$events, $states, $shr_data> for $state {
+        impl<'a, 'b, 'c, 'd, 'e> $crate::State<$events, $states, $shr_data> for $state {
             #[allow(unused_variables)]
             fn handle_event(&mut self, $shr: &mut $shr_data, $evt: &$crate::Event<$events>, $probe: bool) -> $crate::Action<$states> {
                 match *$evt {
@@ -198,7 +198,7 @@ macro_rules! _hsm_create_state_struct {
                 }
             }
         }
-        impl $crate::StateLookup<$st_en, $st_evt, $shr_dat> for $st_str {
+        impl<'a, 'b, 'c, 'd, 'e> $crate::StateLookup<$st_en, $st_evt, $shr_dat> for $st_str {
             fn lookup(&mut self, typ: &$st_en) -> &mut $crate::State<$st_evt, $st_en, $shr_dat> {
                 match *typ {
                     $($st_en::$s => &mut self.$s ),*
