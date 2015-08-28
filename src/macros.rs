@@ -62,7 +62,7 @@ macro_rules! hsm_delayed_transition {
 
 #[macro_export]
 macro_rules! hsm_impl_state {
-    ($state:ident, $events:ident, $states:ident, $shr_data:ident,
+    ($state:ty, $events:ty, $states:ty, $shr_data:ty,
      $($pat:pat => $result:expr),*) => {
         impl<'a, 'b, 'c, 'd, 'e> $crate::State<$events, $states, $shr_data> for $state {
             #[allow(unused_variables)]
@@ -73,7 +73,7 @@ macro_rules! hsm_impl_state {
             }
         }
     };
-    ($state:ident, $events:ident, $states:ident, $shr_data:ident,
+    ($state:ty, $events:ty, $states:ty, $shr_data:ty,
      $shr:ident, $evt:ident, $probe:ident, $($pat:pat => $result:expr),*) => {
         impl<'a, 'b, 'c, 'd, 'e> $crate::State<$events, $states, $shr_data> for $state {
             #[allow(unused_variables)]
