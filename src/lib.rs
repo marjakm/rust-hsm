@@ -201,7 +201,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
                         state = parent;
                     } else {
                         panic!("State {:?} responded with Action::Parent to event {:?}, but the state has no parent", state, evt);
-                        break;
+                        // break;
                     }
                 },
                 Action::Transition(x)        => {
@@ -219,7 +219,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
                         self.transition(state.clone(), x);
                     } else {
                         panic!("State {:?} probed Action::DelayedTransition to event {:?}, but doesn't return Action::Transition", state, evt);
-                        self.current = state;
+                        // self.current = state;
                     }
                     break;
                 },
