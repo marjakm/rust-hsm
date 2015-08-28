@@ -24,11 +24,11 @@
 
 #[macro_export]
 macro_rules! hsm_define_objects_noparents {
-    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ident, ( $($s:ident),* ) ) => {
+    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ty, ( $($s:ident),* ) ) => {
         hsm_define_objects!($st_str, $st_en, $st_evt, $shr_dat, ($($s),*) );
         hsm_state_parents!($st_en ; $($s -> None),*);
     };
-    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ident, ( $($s:ident $x:tt),*)) => {
+    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ty, ( $($s:ident $x:tt),*)) => {
         hsm_define_objects!($st_str, $st_en, $st_evt, $shr_dat, ($($s $x),*) );
         hsm_state_parents!($st_en ; $($s -> None),*);
     }
@@ -36,13 +36,13 @@ macro_rules! hsm_define_objects_noparents {
 
 #[macro_export]
 macro_rules! hsm_define_objects {
-    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ident, ( $($s:ident),* ) ) => {
+    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ty, ( $($s:ident),* ) ) => {
         use $crate::Parent;
         _hsm_create_states!($($s),*);
         _hsm_create_state_enum!($st_en, ($($s),*));
         _hsm_create_state_struct!($st_str, $st_en, $st_evt, $shr_dat, ($($s),*) );
     };
-    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ident, ( $($s:ident $x:tt),*)) => {
+    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ty, ( $($s:ident $x:tt),*)) => {
         use $crate::Parent;
         _hsm_create_states!( $($s $x),* );
         _hsm_create_state_enum!($st_en, ($($s),*));
@@ -185,7 +185,7 @@ macro_rules! _hsm_create_state_enum {
 
 #[macro_export]
 macro_rules! _hsm_create_state_struct {
-    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ident, ($($s:ident),*) ) => {
+    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ty, ($($s:ident),*) ) => {
         #[derive(Debug)]
         #[allow(non_snake_case)]
         pub struct $st_str {
