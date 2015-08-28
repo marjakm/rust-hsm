@@ -30,7 +30,7 @@ extern crate fern;
 extern crate time;
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Events {
     Plus,
     Minus,
@@ -63,10 +63,10 @@ hsm_define_objects_noparents!(StateStruct, States, Events, SharedData, (
 
 impl hsm::State<Events, States, SharedData> for WaitMinusOrInt {
     #[allow(unused_variables)]
-    fn handle_event(&mut self, shr_data: &mut SharedData, evt: hsm::Event<Events>, probe: bool) -> hsm::Action<States> {
+    fn handle_event(&mut self, shr_data: &mut SharedData, evt: &hsm::Event<Events>, probe: bool) -> hsm::Action<States> {
         self.counter += 1;
         info!("{} time in WaitMinusOrInt, shared: {:?}", self.counter, shr_data);
-        match evt {
+        match *evt {
             hsm::Event::User(Events::Minus) => {
                 info!("minus");
                 hsm::Action::Transition(States::WaitInt)

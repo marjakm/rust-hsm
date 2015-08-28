@@ -47,8 +47,8 @@ pub enum Action<UsrStEnum: fmt::Debug> {
     Transition(UsrStEnum),
 }
 
-#[derive(Debug, Clone)]
-pub enum Event<UsrEvtEnum: Clone> {
+#[derive(Debug)]
+pub enum Event<UsrEvtEnum> {
     Enter,
     User(UsrEvtEnum),
     Exit
@@ -64,7 +64,7 @@ pub trait InstanceParent<UsrStEnum> {
 
 pub trait State<UsrEvtEnum, UsrStEnum, UsrShrData>
     where Self: Name {
-    fn handle_event(&mut self, shr_data: &mut UsrShrData, evt: Event<UsrEvtEnum>, probe: bool) -> Action<UsrStEnum>;
+    fn handle_event(&mut self, shr_data: &mut UsrShrData, evt: &Event<UsrEvtEnum>, probe: bool) -> Action<UsrStEnum>;
 }
 impl<'a, UsrEvtEnum, UsrStEnum, UsrShrData> fmt::Debug for &'a State<UsrEvtEnum, UsrStEnum, UsrShrData> {
     fn fmt(&self, f:&mut fmt::Formatter) -> Result<(), fmt::Error> {
@@ -78,18 +78,17 @@ pub trait StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData> {
     fn lookup(&mut self, typ: &UsrStEnum) -> &mut State<UsrEvtEnum, UsrStEnum, UsrShrData>;
 }
 
-#[derive(Clone)]
-struct Task<UsrStEnum, UsrEvtEnum: Clone> {
+struct Task<UsrStEnum, UsrEvtEnum> {
     state: UsrStEnum,
     event: Event<UsrEvtEnum>
 }
-impl<UsrStEnum, UsrEvtEnum: Clone> Task<UsrStEnum, UsrEvtEnum> {
+impl<UsrStEnum, UsrEvtEnum> Task<UsrStEnum, UsrEvtEnum> {
     fn new(state:  UsrStEnum, event: Event<UsrEvtEnum>) -> Self {
         Task { state:  state, event: event }
     }
 }
 
-pub struct StateMachine<UsrStStr, UsrStEnum, UsrEvtEnum: Clone, UsrShrData> {
+pub struct StateMachine<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> {
     current     : UsrStEnum,
     started     : bool,
     states      : UsrStStr,
@@ -101,7 +100,7 @@ pub struct StateMachine<UsrStStr, UsrStEnum, UsrEvtEnum: Clone, UsrShrData> {
 impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData>
     where UsrStStr   : Initializer + StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData>,
           UsrStEnum  : fmt::Debug+Eq+Clone+InstanceParent<UsrStEnum>,
-          UsrEvtEnum : fmt::Debug+Clone {
+          UsrEvtEnum : fmt::Debug {
 
     pub fn new(initial: UsrStEnum, shared_data: UsrShrData) -> Self {
         StateMachine {
@@ -129,7 +128,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
         for task in self.exit_tasks.iter() {
             debug!("send {:?} to {:?}", task.event, task.state);
             match self.states.lookup(&task.state).handle_event(
-                  &mut self.shr_data, task.event.clone(), false){
+                  &mut self.shr_data, &task.event, false){
                 Action::Ignore | Action::Parent => {},
                 _ => panic!("Transitions from exit events are not allowed, \
                             ignoring transition from state {:?} on event {:?}",
@@ -144,7 +143,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
         for task in self.enter_tasks.iter() {
             debug!("send {:?} to {:?}", task.event, task.state);
             match self.states.lookup(&task.state).handle_event(
-                  &mut self.shr_data, task.event.clone(), false){
+                  &mut self.shr_data, &task.event, false){
                 Action::Ignore | Action::Parent => {},
                 _ => panic!("Transitions from enter events are not allowed, \
                             ignoring transition from state {:?} on event {:?}",
@@ -190,7 +189,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
         let mut action;
         let mut state = self.current.clone();
         loop {
-            action = self.states.lookup(&state).handle_event(&mut self.shr_data, evt.clone(), true);
+            action = self.states.lookup(&state).handle_event(&mut self.shr_data, &evt, true);
             match action {
                 Action::Ignore               => {
                     self.exit_tasks.clear();
@@ -215,7 +214,7 @@ impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEn
                 Action::DelayedTransition => {
                     self.process_exit_tasks(); // exit until in the parent that handles the signal
                     debug!("send {:?} to {:?}", evt, state);
-                    if let Action::Transition(x) = self.states.lookup(&state).handle_event(&mut self.shr_data, evt.clone(), false) { // handle the signal
+                    if let Action::Transition(x) = self.states.lookup(&state).handle_event(&mut self.shr_data, &evt, false) { // handle the signal
                         self.current = x.clone();
                         self.transition(state.clone(), x);
                     } else {
