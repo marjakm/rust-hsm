@@ -22,7 +22,9 @@
  * SOFTWARE.
  */
 
-#![allow(dead_code)]
+#![deny(missing_debug_implementations, trivial_casts, trivial_numeric_casts,
+        unsafe_code, unstable_features, unused_import_braces, unused_qualifications)]
+
 
 #[macro_use]
 extern crate log;
@@ -48,7 +50,7 @@ pub enum Action<UsrStEnum: fmt::Debug> {
 }
 
 #[derive(Debug)]
-pub enum Event<UsrEvtEnum> {
+pub enum Event<UsrEvtEnum: fmt::Debug> {
     Enter,
     User(UsrEvtEnum),
     Exit
@@ -63,7 +65,11 @@ pub trait InstanceParent<UsrStEnum> {
 }
 
 pub trait State<UsrEvtEnum, UsrStEnum, UsrShrData>
-    where Self: Name {
+    where Self: Name,
+          UsrEvtEnum: fmt::Debug,
+          UsrStEnum:  fmt::Debug,
+          UsrShrData: fmt::Debug,
+{
     fn handle_event(&mut self, shr_data: &mut UsrShrData, evt: &Event<UsrEvtEnum>, probe: bool) -> Action<UsrStEnum>;
 }
 impl<'a, UsrEvtEnum, UsrStEnum, UsrShrData> fmt::Debug for &'a State<UsrEvtEnum, UsrStEnum, UsrShrData> {
@@ -78,17 +84,30 @@ pub trait StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData> {
     fn lookup(&mut self, typ: &UsrStEnum) -> &mut State<UsrEvtEnum, UsrStEnum, UsrShrData>;
 }
 
-struct Task<UsrStEnum, UsrEvtEnum> {
+#[derive(Debug)]
+struct Task<UsrStEnum, UsrEvtEnum>
+    where UsrStEnum:  fmt::Debug,
+          UsrEvtEnum: fmt::Debug,
+{
     state: UsrStEnum,
     event: Event<UsrEvtEnum>
 }
-impl<UsrStEnum, UsrEvtEnum> Task<UsrStEnum, UsrEvtEnum> {
+impl<UsrStEnum, UsrEvtEnum> Task<UsrStEnum, UsrEvtEnum>
+    where UsrStEnum:  fmt::Debug,
+          UsrEvtEnum: fmt::Debug
+{
     fn new(state:  UsrStEnum, event: Event<UsrEvtEnum>) -> Self {
         Task { state:  state, event: event }
     }
 }
 
-pub struct StateMachine<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> {
+#[derive(Debug)]
+pub struct StateMachine<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData>
+    where UsrStStr:   fmt::Debug,
+          UsrStEnum:  fmt::Debug,
+          UsrEvtEnum: fmt::Debug,
+          UsrShrData: fmt::Debug,
+{
     current     : UsrStEnum,
     started     : bool,
     states      : UsrStStr,
@@ -98,10 +117,11 @@ pub struct StateMachine<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> {
     _phantom    : ::std::marker::PhantomData<UsrEvtEnum>
 }
 impl<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData> StateMachine<UsrStStr, UsrStEnum, UsrEvtEnum, UsrShrData>
-    where UsrStStr   : Initializer + StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData>,
-          UsrStEnum  : fmt::Debug+Eq+Clone+InstanceParent<UsrStEnum>,
-          UsrEvtEnum : fmt::Debug {
-
+    where UsrStStr   : fmt::Debug +Initializer + StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData>,
+          UsrStEnum  : fmt::Debug + Eq + Clone + InstanceParent<UsrStEnum>,
+          UsrEvtEnum : fmt::Debug,
+          UsrShrData : fmt::Debug,
+{
     pub fn new(initial: UsrStEnum, shared_data: UsrShrData) -> Self {
         StateMachine {
             current     : initial,
