@@ -63,15 +63,15 @@ hsm_define_objects_noparents!(StateStruct, States, Events, SharedData, (
 
 impl hsm::State<Events, States, SharedData> for WaitMinusOrInt {
     #[allow(unused_variables)]
-    fn handle_event(&mut self, shr_data: &mut SharedData, evt: &hsm::Event<Events>, probe: bool) -> hsm::Action<States> {
+    fn handle_event(&mut self, shr_data: &mut SharedData, evt: &mut hsm::Event<Events>, probe: bool) -> hsm::Action<States> {
         self.counter += 1;
         info!("{} time in WaitMinusOrInt, shared: {:?}", self.counter, shr_data);
         match *evt {
-            hsm::Event::User(Events::Minus) => {
+            hsm::Event::User(&mut Events::Minus) => {
                 info!("minus");
                 hsm::Action::Transition(States::WaitInt)
             },
-            hsm::Event::User(Events::Int(x)) => {
+            hsm::Event::User(&mut Events::Int(x)) => {
                 info!("int({:?})", x);
                 hsm::Action::Transition(States::WaitOp)
             },
@@ -82,7 +82,7 @@ impl hsm::State<Events, States, SharedData> for WaitMinusOrInt {
 
 // Can't use self
 hsm_impl_state!(WaitInt, Events, States, SharedData, shr, evt, probe,
-    hsm::Event::User(Events::Int(x)) => hsm_delayed_transition!(probe, {
+    hsm::Event::User(&mut Events::Int(x)) => hsm_delayed_transition!(probe, {
         println!("{:?} {:?} {:?}", shr, evt, probe);
         info!("int({:?})", x);
         States::WaitOp
@@ -92,11 +92,11 @@ hsm_impl_state!(WaitInt, Events, States, SharedData, shr, evt, probe,
 
 // Can't use self, shrared_data, event or probe
 hsm_impl_state!(WaitOp, Events, States, SharedData,
-    hsm::Event::User(Events::Minus) => {
+    hsm::Event::User(&mut Events::Minus) => {
         info!("minus");
         hsm::Action::Transition(States::WaitMinusOrInt)
     },
-    hsm::Event::User(Events::Plus) => {
+    hsm::Event::User(&mut Events::Plus) => {
         info!("plus");
         hsm::Action::Transition(States::WaitMinusOrInt)
     },
@@ -105,12 +105,12 @@ hsm_impl_state!(WaitOp, Events, States, SharedData,
 
 fn main() {
     conf_logger();
-    let mut sm = hsm::StateMachine::<StateStruct, States, Events, SharedData>::new(States::WaitMinusOrInt, SharedData::new());
+    let mut sm = hsm::StateMachine::<StateStruct, States, SharedData>::new(States::WaitMinusOrInt, SharedData::new());
     sm.start();
-    sm.input(Events::Int(4));
-    sm.input(Events::Plus);
-    sm.input(Events::Minus);
-    sm.input(Events::Int(5));
+    sm.input(&mut Events::Int(4));
+    sm.input(&mut Events::Plus);
+    sm.input(&mut Events::Minus);
+    sm.input(&mut Events::Int(5));
 }
 
 fn conf_logger() {
