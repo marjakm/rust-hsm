@@ -46,27 +46,34 @@ pub enum Action<UsrStEnum: fmt::Debug> {
 }
 
 #[derive(Debug)]
-pub enum Event<UsrEvtEnum: fmt::Debug> {
+pub enum Event<'a, UsrEvtEnum: 'a+fmt::Debug> {
     Enter,
-    User(UsrEvtEnum),
+    User(&'a mut UsrEvtEnum),
     Exit
 }
 
 #[derive(Debug)]
-struct Task<UsrStEnum, UsrEvtEnum>
-    where UsrStEnum:  fmt::Debug,
-          UsrEvtEnum: fmt::Debug,
-{
-    state: UsrStEnum,
-    event: Event<UsrEvtEnum>
+enum EnterOrExit {
+    Enter,
+    Exit,
 }
 
-impl<UsrStEnum, UsrEvtEnum> Task<UsrStEnum, UsrEvtEnum>
-    where UsrStEnum:  fmt::Debug,
-          UsrEvtEnum: fmt::Debug
-{
-    fn new(state:  UsrStEnum, event: Event<UsrEvtEnum>) -> Self {
-        Task { state:  state, event: event }
+#[derive(Debug)]
+struct Task<UsrStEnum: fmt::Debug>{
+    state:          UsrStEnum,
+    enter_or_exit:  EnterOrExit,
+}
+
+impl<UsrStEnum: fmt::Debug> Task<UsrStEnum> {
+    fn new(state: UsrStEnum, enter_or_exit: EnterOrExit) -> Self {
+        Task { state: state, enter_or_exit: enter_or_exit }
+    }
+
+    fn event<UsrEvtEnum: fmt::Debug>(&self) -> Event<UsrEvtEnum> {
+        match self.enter_or_exit {
+            EnterOrExit::Enter => Event::Enter,
+            EnterOrExit::Exit  => Event::Exit,
+        }
     }
 }
 

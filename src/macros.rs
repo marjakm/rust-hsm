@@ -66,7 +66,7 @@ macro_rules! hsm_impl_state {
      $($pat:pat => $result:expr),*) => {
         impl<'a, 'b, 'c, 'd, 'e> $crate::State<$events, $states, $shr_data> for $state {
             #[allow(unused_variables)]
-            fn handle_event(&mut self, shr_data: &mut $shr_data, evt: &$crate::Event<$events>, probe: bool) -> $crate::Action<$states> {
+            fn handle_event(&mut self, shr_data: &mut $shr_data, evt: &mut $crate::Event<$events>, probe: bool) -> $crate::Action<$states> {
                 match *evt {
                     $( $pat => $result),*
                 }
@@ -77,7 +77,7 @@ macro_rules! hsm_impl_state {
      $shr:ident, $evt:ident, $probe:ident, $($pat:pat => $result:expr),*) => {
         impl<'a, 'b, 'c, 'd, 'e> $crate::State<$events, $states, $shr_data> for $state {
             #[allow(unused_variables)]
-            fn handle_event(&mut self, $shr: &mut $shr_data, $evt: &$crate::Event<$events>, $probe: bool) -> $crate::Action<$states> {
+            fn handle_event(&mut self, $shr: &mut $shr_data, $evt: &mut $crate::Event<$events>, $probe: bool) -> $crate::Action<$states> {
                 match *$evt {
                     $( $pat => $result),*
                 }

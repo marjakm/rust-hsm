@@ -24,7 +24,7 @@ pub trait State<UsrEvtEnum, UsrStEnum, UsrShrData>
           UsrStEnum:  fmt::Debug,
           UsrShrData: fmt::Debug,
 {
-    fn handle_event(&mut self, shr_data: &mut UsrShrData, evt: &Event<UsrEvtEnum>, probe: bool) -> Action<UsrStEnum>;
+    fn handle_event(&mut self, shr_data: &mut UsrShrData, evt: &mut Event<UsrEvtEnum>, probe: bool) -> Action<UsrStEnum>;
 }
 
 pub trait StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData> {
