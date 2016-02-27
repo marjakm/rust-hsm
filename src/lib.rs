@@ -29,7 +29,7 @@
 #[macro_use] extern crate log;
 
 #[macro_use] mod macros;
-mod traits;
+pub mod traits;
 mod state_machine;
 
 pub use ::traits::*;

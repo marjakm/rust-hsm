@@ -37,13 +37,11 @@ macro_rules! hsm_define_objects_noparents {
 #[macro_export]
 macro_rules! hsm_define_objects {
     ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ty, ( $($s:ident),* ) ) => {
-        use $crate::Parent;
         _hsm_create_states!($($s),*);
         _hsm_create_state_enum!($st_en, ($($s),*));
         _hsm_create_state_struct!($st_str, $st_en, $st_evt, $shr_dat, ($($s),*) );
     };
     ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ty, ( $($s:ident $x:tt),*)) => {
-        use $crate::Parent;
         _hsm_create_states!( $($s $x),* );
         _hsm_create_state_enum!($st_en, ($($s),*));
         _hsm_create_state_struct!($st_str, $st_en, $st_evt, $shr_dat, ($($s),*) );
@@ -165,16 +163,24 @@ macro_rules! _hsm_create_state_enum {
         pub enum $st_en {
             $( $s ),*
         }
+        impl $st_en {
+            pub fn from_str(s: &str) -> Result<Self, String> {
+                match s {
+                    $( stringify!($s) => Ok($st_en::$s), )*
+                    _ => Err(format!("{} does not have variant: {}", stringify!($st_en), s))
+                }
+            }
+        }
         impl ::std::fmt::Display for $st_en {
             fn fmt(&self, f:&mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
                 match *self {
-                    $( $st_en::$s => try!(::std::fmt::Display::fmt(stringify!($s), f)) ),*
-                };
-                Ok(())
+                    $( $st_en::$s => ::std::fmt::Display::fmt(stringify!($s), f) ),*
+                }
             }
         }
         impl $crate::InstanceParent<$st_en> for $st_en {
             fn get_parent(&self) -> Option<$st_en> {
+                use $crate::traits::Parent;
                 match *self {
                     $( $st_en::$s => $s::get_parent() ),*
                 }
