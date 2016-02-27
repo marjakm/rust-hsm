@@ -24,27 +24,27 @@
 
 #[macro_export]
 macro_rules! hsm_define_objects_noparents {
-    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ty, ( $($s:ident),* ) ) => {
-        hsm_define_objects!($st_str, $st_en, $st_evt, $shr_dat, ($($s),*) );
+    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ty, $evt_dat:ty, ( $($s:ident),* ) ) => {
+        hsm_define_objects!($st_str, $st_en, $st_evt, $shr_dat, $evt_dat, ($($s),*) );
         hsm_state_parents!($st_en ; $($s -> None),*);
     };
-    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ty, ( $($s:ident $x:tt),*)) => {
-        hsm_define_objects!($st_str, $st_en, $st_evt, $shr_dat, ($($s $x),*) );
+    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ty, $evt_dat:ty, ( $($s:ident $x:tt),*)) => {
+        hsm_define_objects!($st_str, $st_en, $st_evt, $shr_dat, $evt_dat, ($($s $x),*) );
         hsm_state_parents!($st_en ; $($s -> None),*);
     }
 }
 
 #[macro_export]
 macro_rules! hsm_define_objects {
-    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ty, ( $($s:ident),* ) ) => {
+    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ty, $evt_dat:ty, ( $($s:ident),* ) ) => {
         _hsm_create_states!($($s),*);
         _hsm_create_state_enum!($st_en, ($($s),*));
-        _hsm_create_state_struct!($st_str, $st_en, $st_evt, $shr_dat, ($($s),*) );
+        _hsm_create_state_struct!($st_str, $st_en, $st_evt, $shr_dat, $evt_dat, ($($s),*) );
     };
-    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ty, ( $($s:ident $x:tt),*)) => {
+    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ty, $evt_dat:ty, ( $($s:ident $x:tt),*)) => {
         _hsm_create_states!( $($s $x),* );
         _hsm_create_state_enum!($st_en, ($($s),*));
-        _hsm_create_state_struct!($st_str, $st_en, $st_evt, $shr_dat, ($($s),*) );
+        _hsm_create_state_struct!($st_str, $st_en, $st_evt, $shr_dat, $evt_dat, ($($s),*) );
     }
 }
 
@@ -60,22 +60,22 @@ macro_rules! hsm_delayed_transition {
 
 #[macro_export]
 macro_rules! hsm_impl_state {
-    ($state:ty, $events:ty, $states:ty, $shr_data:ty,
+    ($state:ty, $events:ty, $states:ty, $shr_data:ty, $evt_dat:ty,
      $($pat:pat => $result:expr),*) => {
-        impl<'a, 'b, 'c, 'd, 'e> $crate::State<$events, $states, $shr_data> for $state {
+        impl<'a, 'b, 'c, 'd, 'e> $crate::State<$events, $states, $shr_data, $evt_dat> for $state {
             #[allow(unused_variables)]
-            fn handle_event(&mut self, shr_data: &mut $shr_data, evt: &mut $crate::Event<$events>, probe: bool) -> $crate::Action<$states> {
+            fn handle_event(&mut self, shr_data: &mut $shr_data, evt: &mut $crate::Event<$events, $evt_dat>, probe: bool) -> $crate::Action<$states> {
                 match *evt {
                     $( $pat => $result),*
                 }
             }
         }
     };
-    ($state:ty, $events:ty, $states:ty, $shr_data:ty,
+    ($state:ty, $events:ty, $states:ty, $shr_data:ty, $evt_dat:ty,
      $shr:ident, $evt:ident, $probe:ident, $($pat:pat => $result:expr),*) => {
-        impl<'a, 'b, 'c, 'd, 'e> $crate::State<$events, $states, $shr_data> for $state {
+        impl<'a, 'b, 'c, 'd, 'e> $crate::State<$events, $states, $shr_data, $evt_dat> for $state {
             #[allow(unused_variables)]
-            fn handle_event(&mut self, $shr: &mut $shr_data, $evt: &mut $crate::Event<$events>, $probe: bool) -> $crate::Action<$states> {
+            fn handle_event(&mut self, $shr: &mut $shr_data, $evt: &mut $crate::Event<$events, $evt_dat>, $probe: bool) -> $crate::Action<$states> {
                 match *$evt {
                     $( $pat => $result),*
                 }
@@ -191,7 +191,7 @@ macro_rules! _hsm_create_state_enum {
 
 #[macro_export]
 macro_rules! _hsm_create_state_struct {
-    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ty, ($($s:ident),*) ) => {
+    ($st_str:ident, $st_en:ident, $st_evt:ty, $shr_dat:ty, $evt_dat:ty, ($($s:ident),*) ) => {
         #[derive(Debug)]
         #[allow(non_snake_case)]
         pub struct $st_str {
@@ -204,8 +204,8 @@ macro_rules! _hsm_create_state_struct {
                 }
             }
         }
-        impl<'a, 'b, 'c, 'd, 'e> $crate::StateLookup<$st_en, $st_evt, $shr_dat> for $st_str {
-            fn lookup(&mut self, typ: &$st_en) -> &mut $crate::State<$st_evt, $st_en, $shr_dat> {
+        impl<'a, 'b, 'c, 'd, 'e> $crate::StateLookup<$st_en, $st_evt, $shr_dat, $evt_dat> for $st_str {
+            fn lookup(&mut self, typ: &$st_en) -> &mut $crate::State<$st_evt, $st_en, $shr_dat, $evt_dat> {
                 match *typ {
                     $($st_en::$s => &mut self.$s ),*
                 }

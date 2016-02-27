@@ -42,15 +42,16 @@ pub trait InstanceParent<UsrStEnum> {
     fn get_parent(&self) -> Option<UsrStEnum>;
 }
 
-pub trait State<UsrEvtEnum, UsrStEnum, UsrShrData>
+pub trait State<UsrEvtEnum, UsrStEnum, UsrShrData, EvtData>
     where Self: Name,
           UsrEvtEnum: fmt::Debug,
           UsrStEnum:  fmt::Debug,
           UsrShrData: fmt::Debug,
+          EvtData:    fmt::Debug,
 {
-    fn handle_event(&mut self, shr_data: &mut UsrShrData, evt: &mut Event<UsrEvtEnum>, probe: bool) -> Action<UsrStEnum>;
+    fn handle_event(&mut self, shr_data: &mut UsrShrData, evt: &mut Event<UsrEvtEnum, EvtData>, probe: bool) -> Action<UsrStEnum>;
 }
 
-pub trait StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData> {
-    fn lookup(&mut self, typ: &UsrStEnum) -> &mut State<UsrEvtEnum, UsrStEnum, UsrShrData>;
+pub trait StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData, EvtData> {
+    fn lookup(&mut self, typ: &UsrStEnum) -> &mut State<UsrEvtEnum, UsrStEnum, UsrShrData, EvtData>;
 }

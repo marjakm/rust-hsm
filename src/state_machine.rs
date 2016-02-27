@@ -65,27 +65,29 @@ impl<UsrStStr, UsrStEnum, UsrShrData> StateMachine<UsrStStr, UsrStEnum, UsrShrDa
         &mut self.shr_data
     }
 
-    pub fn start<UsrEvtEnum>(&mut self) where
+    pub fn start<UsrEvtEnum, EvtData>(&mut self, data: &mut EvtData) where
         UsrEvtEnum: fmt::Debug,
-        UsrStStr:   StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData>
+        EvtData:    fmt::Debug,
+        UsrStStr:   StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData, EvtData>
     {
         let mut parent = Some(self.current.clone());
         while let Some(state) = parent {
             parent = state.get_parent();
             self.enter_tasks.push(Task::new(state, EnterOrExit::Enter));
         }
-        self.process_enter_tasks();
+        self.process_enter_tasks(data);
         self.started = true;
     }
 
-    fn process_exit_tasks<UsrEvtEnum>(&mut self) where
+    fn process_exit_tasks<UsrEvtEnum, EvtData>(&mut self, data: &mut EvtData) where
         UsrEvtEnum: fmt::Debug,
-        UsrStStr:   StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData>
+        EvtData:    fmt::Debug,
+        UsrStStr:   StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData, EvtData>
     {
         for task in self.exit_tasks.iter_mut() {
             debug!("send {:?} to {:?}", task.enter_or_exit, task.state);
             match self.states.lookup(&task.state).handle_event(
-                  &mut self.shr_data, &mut task.event(), false){
+                  &mut self.shr_data, &mut task.event(data), false){
                 Action::Ignore | Action::Parent => {},
                 _ => panic!("Transitions from exit events are not allowed, \
                             ignoring transition from state {:?} on event {:?}",
@@ -95,15 +97,16 @@ impl<UsrStStr, UsrStEnum, UsrShrData> StateMachine<UsrStStr, UsrStEnum, UsrShrDa
         self.exit_tasks.clear();
     }
 
-    fn process_enter_tasks<UsrEvtEnum>(&mut self) where
+    fn process_enter_tasks<UsrEvtEnum, EvtData>(&mut self, data: &mut EvtData) where
         UsrEvtEnum: fmt::Debug,
-        UsrStStr:   StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData>
+        EvtData:    fmt::Debug,
+        UsrStStr:   StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData, EvtData>
     {
         self.enter_tasks.reverse();
         for task in self.enter_tasks.iter_mut() {
             debug!("send {:?} to {:?}", task.enter_or_exit, task.state);
             match self.states.lookup(&task.state).handle_event(
-                  &mut self.shr_data, &mut task.event(), false){
+                  &mut self.shr_data, &mut task.event(data), false){
                 Action::Ignore | Action::Parent => {},
                 _ => panic!("Transitions from enter events are not allowed, \
                             ignoring transition from state {:?} on event {:?}",
@@ -113,9 +116,10 @@ impl<UsrStStr, UsrStEnum, UsrShrData> StateMachine<UsrStStr, UsrStEnum, UsrShrDa
         self.enter_tasks.clear();
     }
 
-    fn transition<UsrEvtEnum>(&mut self, from_state: UsrStEnum, to_state: UsrStEnum) where
+    fn transition<UsrEvtEnum, EvtData>(&mut self, from_state: UsrStEnum, to_state: UsrStEnum, data: &mut EvtData) where
         UsrEvtEnum: fmt::Debug,
-        UsrStStr:   StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData>
+        EvtData:    fmt::Debug,
+        UsrStStr:   StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData, EvtData>
     {
         let mut parent = Some(from_state);
         while let Some(state) = parent {
@@ -140,22 +144,22 @@ impl<UsrStStr, UsrStEnum, UsrShrData> StateMachine<UsrStStr, UsrStEnum, UsrShrDa
                 self.exit_tasks.pop();
             }
         }
-        self.process_exit_tasks();
-        self.process_enter_tasks();
+        self.process_exit_tasks(data);
+        self.process_enter_tasks(data);
     }
 
-    pub fn input<UsrEvtEnum>(&mut self, evt: &mut UsrEvtEnum) where
+    pub fn input<UsrEvtEnum, EvtData>(&mut self, evt: &mut UsrEvtEnum, data: &mut EvtData) where
         UsrEvtEnum: fmt::Debug,
-        UsrStStr:   StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData>
+        EvtData:    fmt::Debug,
+        UsrStStr:   StateLookup<UsrStEnum, UsrEvtEnum, UsrShrData, EvtData>
     {
         assert!(self.started, "Can't call input before starting the state machine with start()");
-        let mut evt = Event::User(evt);
         debug!("state:  {:?}", self.current);
-        debug!("input:  {:?}", evt);
+        debug!("input:  {:?}", Event::User(data, evt));
         let mut action;
         let mut state = self.current.clone();
         loop {
-            action = self.states.lookup(&state).handle_event(&mut self.shr_data, &mut evt, true);
+            action = self.states.lookup(&state).handle_event(&mut self.shr_data, &mut Event::User(data, evt), true);
             match action {
                 Action::Ignore               => {
                     self.exit_tasks.clear();
@@ -166,25 +170,25 @@ impl<UsrStStr, UsrStEnum, UsrShrData> StateMachine<UsrStStr, UsrStEnum, UsrShrDa
                         self.exit_tasks.push(Task::new(state.clone(), EnterOrExit::Exit));
                         state = parent;
                     } else {
-                        panic!("State {:?} responded with Action::Parent to event {:?}, but the state has no parent", state, evt);
+                        panic!("State {:?} responded with Action::Parent to event {:?}, but the state has no parent", state, Event::User(data, evt));
                         // break;
                     }
                 },
                 Action::Transition(x)        => {
-                    debug!("send {:?} to {:?}", evt, state);
-                    self.process_exit_tasks();  // exit until in the parent that handles the signal
+                    debug!("send {:?} to {:?}", Event::User(data, evt), state);
+                    self.process_exit_tasks(data);  // exit until in the parent that handles the signal
                     self.current = x.clone(); // signal allready handled
-                    self.transition(state.clone(), x);
+                    self.transition(state.clone(), x, data);
                     break;
                 },
                 Action::DelayedTransition => {
-                    self.process_exit_tasks(); // exit until in the parent that handles the signal
-                    debug!("send {:?} to {:?}", evt, state);
-                    if let Action::Transition(x) = self.states.lookup(&state).handle_event(&mut self.shr_data, &mut evt, false) { // handle the signal
+                    self.process_exit_tasks(data); // exit until in the parent that handles the signal
+                    debug!("send {:?} to {:?}", Event::User(data, evt), state);
+                    if let Action::Transition(x) = self.states.lookup(&state).handle_event(&mut self.shr_data, &mut Event::User(data, evt), false) { // handle the signal
                         self.current = x.clone();
-                        self.transition(state.clone(), x);
+                        self.transition(state.clone(), x, data);
                     } else {
-                        panic!("State {:?} probed Action::DelayedTransition to event {:?}, but doesn't return Action::Transition", state, evt);
+                        panic!("State {:?} probed Action::DelayedTransition to event {:?}, but doesn't return Action::Transition", state, Event::User(data, evt));
                         // self.current = state;
                     }
                     break;

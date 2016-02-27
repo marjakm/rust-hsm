@@ -46,10 +46,13 @@ pub enum Action<UsrStEnum: fmt::Debug> {
 }
 
 #[derive(Debug)]
-pub enum Event<'a, UsrEvtEnum: 'a+fmt::Debug> {
-    Enter,
-    User(&'a mut UsrEvtEnum),
-    Exit
+pub enum Event<'a, UsrEvtEnum, EvtData> where
+    UsrEvtEnum: 'a+fmt::Debug,
+    EvtData:    'a+fmt::Debug,
+{
+    Enter(&'a mut EvtData),
+    User(&'a mut EvtData, &'a mut UsrEvtEnum),
+    Exit(&'a mut EvtData),
 }
 
 #[derive(Debug)]
@@ -69,15 +72,18 @@ impl<UsrStEnum: fmt::Debug> Task<UsrStEnum> {
         Task { state: state, enter_or_exit: enter_or_exit }
     }
 
-    fn event<UsrEvtEnum: fmt::Debug>(&self) -> Event<UsrEvtEnum> {
+    fn event<'a, UsrEvtEnum, EvtData>(&self, data: &'a mut EvtData) -> Event<'a, UsrEvtEnum, EvtData> where
+        UsrEvtEnum: fmt::Debug,
+        EvtData:    fmt::Debug,
+    {
         match self.enter_or_exit {
-            EnterOrExit::Enter => Event::Enter,
-            EnterOrExit::Exit  => Event::Exit,
+            EnterOrExit::Enter => Event::Enter(data),
+            EnterOrExit::Exit  => Event::Exit(data),
         }
     }
 }
 
-impl<'a, UsrEvtEnum, UsrStEnum, UsrShrData> fmt::Debug for &'a State<UsrEvtEnum, UsrStEnum, UsrShrData> {
+impl<'a, UsrEvtEnum, UsrStEnum, UsrShrData, EvtData> fmt::Debug for &'a State<UsrEvtEnum, UsrStEnum, UsrShrData, EvtData> {
     fn fmt(&self, f:&mut fmt::Formatter) -> Result<(), fmt::Error> {
         try!(fmt::Debug::fmt(self.name(), f));
         Ok(())
